@@ -1,4 +1,4 @@
-"""Budget simulation engine: models revenue impact of spend changes."""
+"""Budget simulation engine: estimates revenue impact of spend changes."""
 import pandas as pd
 import numpy as np
 from loguru import logger
@@ -6,73 +6,67 @@ from loguru import logger
 
 class BudgetSimulator:
     """
-    Simulates "what-if" budget scenarios.
-    Uses historical ROAS to estimate incremental revenue from spend changes.
+    Simulates revenue impact of budget changes using marginal ROAS elasticity.
+    Uses a log-linear diminishing returns model: Revenue ~ a * Spend^b
     """
 
     def __init__(self):
-        self._channel_roas: dict = {}
-        self._channel_spend: dict = {}
+        self.elasticity_map: dict = {}  # campaign -> spend elasticity
 
-    def fit(self, canonical_df: pd.DataFrame) -> None:
-        """Learn baseline ROAS and spend patterns per channel."""
-        recent = canonical_df[canonical_df["date"] >= canonical_df["date"].max() - pd.Timedelta(days=30)]
-        for channel, grp in recent.groupby("channel"):
-            total_spend = grp["spend"].sum()
-            total_revenue = grp["revenue"].sum()
-            roas = total_revenue / total_spend if total_spend > 0 else 0
-            self._channel_roas[channel] = round(roas, 4)
-            self._channel_spend[channel] = round(total_spend, 2)
-        logger.info(f"Budget simulator fitted. Channels: {list(self._channel_roas.keys())}")
+    def fit(self, df: pd.DataFrame):
+        """Estimate spend elasticity per campaign from historical data."""
+        for (channel, campaign), grp in df.groupby(["channel", "campaign_name"]):
+            grp = grp[(grp["spend"] > 0) & (grp["revenue"] > 0)].copy()
+            if len(grp) < 10:
+                continue
+            log_spend = np.log(grp["spend"])
+            log_rev = np.log(grp["revenue"])
+            # OLS: log(revenue) = a + b * log(spend)
+            b = np.polyfit(log_spend, log_rev, 1)[0]
+            b = float(np.clip(b, 0.1, 2.0))  # sensible bounds
+            self.elasticity_map[(channel, campaign)] = b
+        logger.info(f"Budget simulator fitted for {len(self.elasticity_map)} campaigns")
 
     def simulate(
         self,
-        channel: str,
-        spend_change_pct: float,
-        base_forecast_p50: float,
-        base_spend: float = None,
-    ) -> dict:
+        forecast: pd.DataFrame,
+        spend_changes: dict,  # {campaign_name: pct_change}  e.g. {"Search_US": 0.20}
+    ) -> pd.DataFrame:
         """
-        Args:
-            channel: e.g. 'google'
-            spend_change_pct: e.g. 20.0 for +20%
-            base_forecast_p50: current P50 forecast revenue
-            base_spend: override base spend (optional)
-        Returns dict with simulated revenue and delta.
+        Returns a modified forecast with adjusted revenue estimates.
+        spend_changes: {campaign_name: fractional_change}  e.g. 0.20 = +20%
         """
-        roas = self._channel_roas.get(channel, 2.0)
-        base = base_spend or self._channel_spend.get(channel, 1000.0)
+        out = forecast.copy()
+        for campaign, pct in spend_changes.items():
+            mask = out["campaign_name"] == campaign
+            if not mask.any():
+                logger.warning(f"Campaign '{campaign}' not found in forecast")
+                continue
+            rows = out.loc[mask]
+            channel = rows["channel"].iloc[0] if "channel" in rows.columns else None
+            b = self.elasticity_map.get((channel, campaign), 0.8)  # default elasticity
 
-        delta_spend = base * (spend_change_pct / 100)
-        delta_revenue = delta_spend * roas
+            multiplier = (1 + pct) ** b
+            for q in ["revenue_p10", "revenue_p50", "revenue_p90"]:
+                if q in out.columns:
+                    out.loc[mask, q] = (out.loc[mask, q] * multiplier).clip(lower=0)
 
-        # Apply diminishing returns for large increases (>30%)
-        if spend_change_pct > 30:
-            diminishing_factor = 0.75
-            delta_revenue *= diminishing_factor
+            logger.info(f"Simulated {campaign}: spend +{pct*100:.0f}% → revenue x{multiplier:.3f}")
+        return out
 
-        new_revenue_p50 = base_forecast_p50 + delta_revenue
-        new_revenue_p10 = new_revenue_p50 * 0.88
-        new_revenue_p90 = new_revenue_p50 * 1.12
-
+    def what_if_summary(self, baseline: pd.DataFrame, simulated: pd.DataFrame) -> dict:
+        """Return a summary comparing baseline vs simulated totals."""
         return {
-            "channel": channel,
-            "spend_change_pct": spend_change_pct,
-            "delta_spend": round(delta_spend, 2),
-            "delta_revenue_estimated": round(delta_revenue, 2),
-            "new_revenue_p10": round(new_revenue_p10, 2),
-            "new_revenue_p50": round(new_revenue_p50, 2),
-            "new_revenue_p90": round(new_revenue_p90, 2),
-            "baseline_roas": roas,
-            "explanation": (
-                f"Increasing {channel.title()} spend by {spend_change_pct:.0f}% (${delta_spend:,.0f}) "
-                f"is estimated to generate an additional ${delta_revenue:,.0f} in revenue "
-                f"based on a 30-day baseline ROAS of {roas:.2f}x."
+            "baseline_revenue_p50": round(float(baseline["revenue_p50"].sum()), 2),
+            "simulated_revenue_p50": round(float(simulated["revenue_p50"].sum()), 2),
+            "baseline_revenue_p10": round(float(baseline["revenue_p10"].sum()), 2),
+            "simulated_revenue_p10": round(float(simulated["revenue_p10"].sum()), 2),
+            "baseline_revenue_p90": round(float(baseline["revenue_p90"].sum()), 2),
+            "simulated_revenue_p90": round(float(simulated["revenue_p90"].sum()), 2),
+            "delta_revenue": round(
+                float(simulated["revenue_p50"].sum()) - float(baseline["revenue_p50"].sum()), 2
+            ),
+            "delta_pct": round(
+                (float(simulated["revenue_p50"].sum()) / (float(baseline["revenue_p50"].sum()) + 1e-9) - 1) * 100, 2
             ),
         }
-
-    def simulate_all_channels(self, spend_change_pct: float, base_forecast_p50: float) -> list[dict]:
-        return [
-            self.simulate(ch, spend_change_pct, base_forecast_p50)
-            for ch in self._channel_roas
-        ]

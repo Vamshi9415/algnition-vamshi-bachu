@@ -1,4 +1,4 @@
-"""Prophet forecasting model (aggregated daily revenue)."""
+"""Prophet forecaster for aggregate daily revenue per channel."""
 import pandas as pd
 from loguru import logger
 
@@ -7,49 +7,54 @@ try:
     PROPHET_AVAILABLE = True
 except ImportError:
     PROPHET_AVAILABLE = False
-    logger.warning("Prophet not installed. Prophet model disabled.")
+    logger.warning("Prophet not installed. ProphetForecaster will be skipped.")
 
 
 class ProphetForecaster:
-    """Wraps Facebook Prophet for daily revenue forecasting with uncertainty."""
+    """Wraps Facebook Prophet for daily revenue forecasting."""
 
-    def __init__(self, horizon: int = 60):
-        self.horizon = horizon
-        self.model: object = None
-        self.last_date: object = None
+    def __init__(self, config: dict = None):
+        self.config = config or {}
+        self.models: dict[str, "Prophet"] = {}  # keyed by channel+campaign
 
-    def fit(self, df: pd.DataFrame) -> None:
+    def fit(self, df: pd.DataFrame):
         if not PROPHET_AVAILABLE:
-            raise RuntimeError("Prophet not installed.")
-        daily = (
-            df.groupby("date")["revenue"]
-            .sum()
-            .reset_index()
-            .rename(columns={"date": "ds", "revenue": "y"})
-        )
-        self.last_date = daily["ds"].max()
-        self.model = Prophet(
-            seasonality_mode="multiplicative",
-            yearly_seasonality=True,
-            weekly_seasonality=True,
-            daily_seasonality=False,
-            changepoint_prior_scale=0.05,
-        )
-        self.model.add_country_holidays(country_name="US")
-        self.model.fit(daily)
-        logger.info(f"Prophet fitted on {len(daily)} daily observations")
+            return
+        groups = df.groupby(["channel", "campaign_name"])
+        for (channel, campaign), grp in groups:
+            key = f"{channel}|{campaign}"
+            ts = grp[["date", "revenue"]].rename(columns={"date": "ds", "revenue": "y"})
+            ts = ts.sort_values("ds").dropna()
+            if len(ts) < 14:
+                continue
+            m = Prophet(
+                seasonality_mode=self.config.get("seasonality_mode", "multiplicative"),
+                yearly_seasonality=self.config.get("yearly_seasonality", True),
+                weekly_seasonality=self.config.get("weekly_seasonality", True),
+                daily_seasonality=False,
+                changepoint_prior_scale=self.config.get("changepoint_prior_scale", 0.05),
+            )
+            m.fit(ts)
+            self.models[key] = m
+        logger.info(f"Prophet fitted for {len(self.models)} campaign series")
 
-    def predict(self) -> pd.DataFrame:
-        if not PROPHET_AVAILABLE or self.model is None:
-            raise RuntimeError("Prophet model not fitted.")
-        future = self.model.make_future_dataframe(periods=self.horizon)
-        forecast = self.model.predict(future)
-        result = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].tail(self.horizon)
-        result = result.rename(columns={
-            "ds": "date",
-            "yhat": "p50",
-            "yhat_lower": "p10",
-            "yhat_upper": "p90",
-        })
-        result[["p10", "p50", "p90"]] = result[["p10", "p50", "p90"]].clip(lower=0)
-        return result.reset_index(drop=True)
+    def predict(self, horizon_days: int = 60) -> pd.DataFrame:
+        if not PROPHET_AVAILABLE or not self.models:
+            return pd.DataFrame()
+        frames = []
+        for key, model in self.models.items():
+            channel, campaign = key.split("|", 1)
+            future = model.make_future_dataframe(periods=horizon_days)
+            forecast = model.predict(future).tail(horizon_days)
+            forecast["channel"] = channel
+            forecast["campaign_name"] = campaign
+            forecast = forecast.rename(columns={"ds": "date", "yhat": "revenue_p50",
+                                                 "yhat_lower": "revenue_p10",
+                                                 "yhat_upper": "revenue_p90"})
+            frames.append(forecast[["date", "channel", "campaign_name",
+                                     "revenue_p10", "revenue_p50", "revenue_p90"]])
+        out = pd.concat(frames, ignore_index=True)
+        out[["revenue_p10", "revenue_p50", "revenue_p90"]] = out[
+            ["revenue_p10", "revenue_p50", "revenue_p90"]
+        ].clip(lower=0)
+        return out

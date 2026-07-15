@@ -1,24 +1,26 @@
 """FastAPI application entry point."""
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
 
-from src.api.routers import forecast, upload, simulate, health
+load_dotenv()
+
+from src.api.routes import forecast, health, simulate, report
 
 app = FastAPI(
-    title="AIgnition Forecast Studio",
-    description="AI-Assisted Probabilistic Revenue Forecasting Platform",
+    title="AIgnition Forecast Studio API",
+    description="Probabilistic revenue forecasting for digital marketing agencies.",
     version="1.0.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.include_router(health.router, prefix="/api")
-app.include_router(upload.router, prefix="/api")
-app.include_router(forecast.router, prefix="/api")
-app.include_router(simulate.router, prefix="/api")
+app.include_router(health.router, tags=["Health"])
+app.include_router(forecast.router, prefix="/api/v1", tags=["Forecast"])
+app.include_router(simulate.router, prefix="/api/v1", tags=["Budget Simulator"])
+app.include_router(report.router, prefix="/api/v1", tags=["Report"])

@@ -1,40 +1,58 @@
-"""Unit tests for the data validator."""
+"""Tests for DataValidator."""
 import pandas as pd
 import pytest
 from src.validation.validator import DataValidator
 
 
 @pytest.fixture
-def valid_df():
-    return pd.DataFrame({
-        "date": pd.date_range("2024-01-01", periods=10),
-        "channel": ["microsoft"] * 10,
-        "campaign_name": ["Camp A"] * 10,
-        "spend": [100.0] * 10,
-        "revenue": [500.0] * 10,
-        "clicks": [200] * 10,
-        "impressions": [2000] * 10,
-        "conversions": [5.0] * 10,
-    })
+def validator():
+    return DataValidator()
 
 
-def test_valid_dataframe_passes(valid_df):
-    v = DataValidator()
-    report = v.validate(valid_df)
+def make_df(**overrides):
+    base = {
+        "date": pd.to_datetime(["2024-01-01", "2024-01-02"]),
+        "channel": ["google", "google"],
+        "campaign_name": ["Search_US", "Search_US"],
+        "spend": [100.0, 200.0],
+        "revenue": [300.0, 600.0],
+        "clicks": [50, 80],
+        "impressions": [1000, 2000],
+    }
+    base.update(overrides)
+    return pd.DataFrame(base)
+
+
+def test_valid_dataframe_passes(validator):
+    df = make_df()
+    report = validator.validate(df)
     assert report.passed
-    assert len(report.errors) == 0
+    assert report.errors == []
 
 
-def test_missing_required_column_fails():
-    df = pd.DataFrame({"date": pd.date_range("2024-01-01", periods=3), "channel": ["google"] * 3})
-    v = DataValidator()
-    report = v.validate(df)
+def test_negative_spend_fails(validator):
+    df = make_df(spend=[-10.0, 100.0])
+    report = validator.validate(df)
     assert not report.passed
-    assert any("Missing required columns" in e for e in report.errors)
+    assert any("negative spend" in e for e in report.errors)
 
 
-def test_negative_spend_fails(valid_df):
-    valid_df.loc[0, "spend"] = -10.0
-    v = DataValidator()
-    report = v.validate(valid_df)
+def test_negative_revenue_fails(validator):
+    df = make_df(revenue=[-1.0, 100.0])
+    report = validator.validate(df)
+    assert not report.passed
+    assert any("negative revenue" in e for e in report.errors)
+
+
+def test_missing_required_column_fails(validator):
+    df = make_df()
+    df = df.drop(columns=["revenue"])
+    report = validator.validate(df)
+    assert not report.passed
+    assert any("revenue" in e for e in report.errors)
+
+
+def test_empty_dataframe_fails(validator):
+    df = pd.DataFrame(columns=["date", "channel", "campaign_name", "spend", "revenue"])
+    report = validator.validate(df)
     assert not report.passed

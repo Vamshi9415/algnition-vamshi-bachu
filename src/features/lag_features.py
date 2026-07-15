@@ -1,50 +1,62 @@
 """Lag and rolling window feature generator."""
 import pandas as pd
+from loguru import logger
 
 
-LAG_WINDOWS = [1, 3, 7, 14, 30]
-ROLLING_WINDOWS = [3, 7, 14, 30, 60]
-EWM_SPANS = [7, 14, 30]
-
-TARGET_COLS = ["revenue", "spend", "roas", "conversions", "clicks", "ctr", "cpa"]
+LAG_DAYS = [1, 3, 7, 14, 30]
+ROLL_WINDOWS = [3, 7, 14, 30]
+LAG_COLS = ["revenue", "spend", "roas", "conversions", "clicks", "ctr"]
 
 
 class LagFeatureGenerator:
-    """Generates lag, rolling, EWM, and growth features per campaign."""
+    """Adds time-shifted and rolling statistics for each campaign."""
 
     def generate(self, df: pd.DataFrame) -> pd.DataFrame:
-        df = df.copy().sort_values(["channel", "campaign_name", "date"])
-        group_cols = ["channel", "campaign_name"]
+        df = df.copy().sort_values(["channel", "campaign_name", "date"]).reset_index(drop=True)
+        group_keys = ["channel", "campaign_name"]
 
-        for col in TARGET_COLS:
+        for col in LAG_COLS:
             if col not in df.columns:
                 continue
+            for lag in LAG_DAYS:
+                df[f"{col}_lag{lag}"] = (
+                    df.groupby(group_keys)[col]
+                    .shift(lag)
+                )
 
-            grp = df.groupby(group_cols)[col]
-
-            # Lag features
-            for lag in LAG_WINDOWS:
-                df[f"{col}_lag_{lag}"] = grp.shift(lag)
-
-            # Rolling statistics
-            for w in ROLLING_WINDOWS:
-                shifted = grp.shift(1)  # avoid leakage
-                roll = df.groupby(group_cols)[col].transform(
+        for col in ["revenue", "spend", "roas"]:
+            if col not in df.columns:
+                continue
+            for w in ROLL_WINDOWS:
+                grp = df.groupby(group_keys)[col]
+                df[f"{col}_roll_mean_{w}d"] = grp.transform(
                     lambda x: x.shift(1).rolling(w, min_periods=1).mean()
                 )
-                df[f"{col}_rolling_mean_{w}d"] = roll
-                df[f"{col}_rolling_std_{w}d"] = df.groupby(group_cols)[col].transform(
-                    lambda x: x.shift(1).rolling(w, min_periods=1).std()
+                df[f"{col}_roll_std_{w}d"] = grp.transform(
+                    lambda x: x.shift(1).rolling(w, min_periods=1).std().fillna(0)
+                )
+                df[f"{col}_roll_max_{w}d"] = grp.transform(
+                    lambda x: x.shift(1).rolling(w, min_periods=1).max()
                 )
 
-            # EWM
-            for span in EWM_SPANS:
-                df[f"{col}_ewm_{span}d"] = df.groupby(group_cols)[col].transform(
-                    lambda x: x.shift(1).ewm(span=span, adjust=False).mean()
+        # EWM features
+        for col in ["revenue", "spend", "roas"]:
+            if col not in df.columns:
+                continue
+            for alpha in [0.3, 0.7]:
+                label = str(int(alpha * 10))
+                df[f"{col}_ewm{label}"] = df.groupby(group_keys)[col].transform(
+                    lambda x: x.shift(1).ewm(alpha=alpha, adjust=False).mean()
                 )
 
-            # Growth features
-            df[f"{col}_wow_growth"] = grp.pct_change(7).round(4)
-            df[f"{col}_mom_growth"] = grp.pct_change(30).round(4)
+        # Growth features
+        for col in ["revenue", "spend"]:
+            if col not in df.columns:
+                continue
+            prev = df.groupby(group_keys)[col].shift(7)
+            df[f"{col}_wow_growth"] = ((df[col] - prev) / (prev.abs() + 1e-9)).round(4)
+            prev30 = df.groupby(group_keys)[col].shift(30)
+            df[f"{col}_mom_growth"] = ((df[col] - prev30) / (prev30.abs() + 1e-9)).round(4)
 
+        logger.info(f"Lag/rolling features added. Shape: {df.shape}")
         return df

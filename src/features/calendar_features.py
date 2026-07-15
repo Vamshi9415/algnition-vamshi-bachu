@@ -2,66 +2,64 @@
 import numpy as np
 import pandas as pd
 import holidays
+from loguru import logger
 
 
 class CalendarFeatureGenerator:
+    """Generates date-based and holiday features from a canonical DataFrame."""
+
     def __init__(self, country: str = "US"):
         self.country = country
 
     def generate(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df.copy()
-        df["date"] = pd.to_datetime(df["date"])
         d = df["date"]
 
         df["year"] = d.dt.year
         df["quarter"] = d.dt.quarter
         df["month"] = d.dt.month
         df["week_of_year"] = d.dt.isocalendar().week.astype(int)
-        df["day_of_week"] = d.dt.dayofweek        # 0=Mon
+        df["day_of_week"] = d.dt.dayofweek          # 0=Monday
         df["day_of_month"] = d.dt.day
+        df["day_of_year"] = d.dt.dayofyear
         df["is_weekend"] = (d.dt.dayofweek >= 5).astype(int)
         df["is_month_start"] = d.dt.is_month_start.astype(int)
         df["is_month_end"] = d.dt.is_month_end.astype(int)
         df["is_quarter_start"] = d.dt.is_quarter_start.astype(int)
         df["is_quarter_end"] = d.dt.is_quarter_end.astype(int)
 
-        # Fourier seasonality
-        doy = d.dt.dayofyear
-        df["sin_doy"] = np.sin(2 * np.pi * doy / 365.25)
-        df["cos_doy"] = np.cos(2 * np.pi * doy / 365.25)
+        # Days until end of month
+        month_end = d + pd.offsets.MonthEnd(0)
+        df["days_until_month_end"] = (month_end - d).dt.days
+
+        # Fourier seasonality features
+        df["sin_day_of_year"] = np.sin(2 * np.pi * df["day_of_year"] / 365.25)
+        df["cos_day_of_year"] = np.cos(2 * np.pi * df["day_of_year"] / 365.25)
         df["sin_month"] = np.sin(2 * np.pi * df["month"] / 12)
         df["cos_month"] = np.cos(2 * np.pi * df["month"] / 12)
-        df["sin_dow"] = np.sin(2 * np.pi * df["day_of_week"] / 7)
-        df["cos_dow"] = np.cos(2 * np.pi * df["day_of_week"] / 7)
+        df["sin_day_of_week"] = np.sin(2 * np.pi * df["day_of_week"] / 7)
+        df["cos_day_of_week"] = np.cos(2 * np.pi * df["day_of_week"] / 7)
 
         # Holiday flags
-        years = df["year"].unique().tolist()
-        country_holidays = holidays.country_holidays(self.country, years=years)
-        df["is_holiday"] = d.apply(lambda x: int(x in country_holidays))
-        df["holiday_name"] = d.apply(lambda x: country_holidays.get(x, ""))
+        df = self._add_holiday_features(df)
 
-        # Days until/since key marketing events
-        df["days_until_month_end"] = (
-            d.apply(lambda x: (x + pd.offsets.MonthEnd(0)) - x).dt.days
+        logger.info(f"Calendar features added: {df.shape[1]} total columns")
+        return df
+
+    def _add_holiday_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        years = df["date"].dt.year.unique().tolist()
+        us_holidays = {}
+        for y in years:
+            us_holidays.update(holidays.US(years=y))
+
+        df["is_holiday"] = df["date"].dt.date.map(lambda d: int(d in us_holidays)).fillna(0).astype(int)
+        df["holiday_name"] = df["date"].dt.date.map(lambda d: us_holidays.get(d, ""))
+
+        # Black Friday / Cyber Monday detection
+        df["is_black_friday"] = df["holiday_name"].str.contains("Thanksgiving", na=False).astype(int)
+        # Proximity to any holiday
+        holiday_dates = pd.to_datetime(list(us_holidays.keys()))
+        df["days_to_nearest_holiday"] = df["date"].apply(
+            lambda d: int(min(abs((holiday_dates - d).days))) if len(holiday_dates) else 99
         )
-        df["days_until_year_end"] = (
-            d.apply(lambda x: pd.Timestamp(x.year, 12, 31) - x).dt.days
-        )
-
-        # Black Friday proximity (approx 4th Thursday Nov + 1)
-        def days_to_black_friday(dt):
-            import calendar
-            year = dt.year
-            nov = pd.Timestamp(year, 11, 1)
-            # 4th Thursday
-            thursdays = [nov + pd.Timedelta(days=i) for i in range(30) if (nov + pd.Timedelta(days=i)).weekday() == 3]
-            bf = thursdays[3] + pd.Timedelta(days=1)
-            return (bf - dt).days
-
-        df["days_to_black_friday"] = d.apply(days_to_black_friday)
-        df["near_black_friday"] = (df["days_to_black_friday"].abs() <= 7).astype(int)
-        df["near_christmas"] = (
-            d.apply(lambda x: abs((pd.Timestamp(x.year, 12, 25) - x).days) <= 10).astype(int)
-        )
-
         return df

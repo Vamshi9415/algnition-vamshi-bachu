@@ -13,30 +13,30 @@ git clone https://github.com/Vamshi9415/algnition-vamshi-bachu
 cd algnition-vamshi-bachu
 pip install -r requirements.txt
 
-# Place your ad-platform CSVs in data/raw/
-cp /path/to/your/*.csv data/raw/
+# Place your ad-platform CSVs in ml_engine/data/raw/
+cp /path/to/your/*.csv ml_engine/data/raw/
 
 # Run the full pipeline
-DATA_DIR=data/raw MODEL_PATH=pickle/model.pkl OUTPUT_PATH=output/predictions.csv bash run.sh
+DATA_DIR=ml_engine/data/raw MODEL_PATH=ml_engine/pickle/model.pkl OUTPUT_PATH=ml_engine/output/predictions.csv bash run.sh
 ```
 
-**Output:** `output/predictions.csv` with columns:
+**Output:** `ml_engine/output/predictions.csv` with columns:
 `date, channel, campaign_name, revenue_p10, revenue_p50, revenue_p90, confidence, pipeline_wmape, pipeline_picp, production_ready`
 
 ### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DATA_DIR` | `data/raw` | Directory with raw ad-platform CSVs |
-| `MODEL_PATH` | `pickle/model.pkl` | Save/load path for trained model bundle |
-| `OUTPUT_PATH` | `output/predictions.csv` | Predictions output path |
+| `DATA_DIR` | `ml_engine/data/raw` | Directory with raw ad-platform CSVs |
+| `MODEL_PATH` | `ml_engine/pickle/model.pkl` | Save/load path for trained model bundle |
+| `OUTPUT_PATH` | `ml_engine/output/predictions.csv` | Predictions output path |
 | `HORIZON_DAYS` | `60` | Forecast horizon in days |
 | `SKIP_TRAIN` | `0` | Set to `1` to skip retraining |
 
 ### Skip-Training Mode (re-run on same data)
 
 ```bash
-SKIP_TRAIN=1 DATA_DIR=data/raw OUTPUT_PATH=output/predictions.csv bash run.sh
+SKIP_TRAIN=1 DATA_DIR=ml_engine/data/raw OUTPUT_PATH=ml_engine/output/predictions.csv bash run.sh
 ```
 
 ---
@@ -57,7 +57,7 @@ Multiple CSVs from different platforms can be placed in `DATA_DIR` simultaneousl
 
 ```
 raw CSVs
-  └─ Ingestion (auto-detect platform)
+    └─ Ingestion (auto-detect platform)
       └─ Canonical Schema (13 unified columns)
           └─ Validation (nulls, negatives, duplicates)
               └─ Cleaning (8-step deterministic)
@@ -103,45 +103,26 @@ A model is **production-ready** only if ALL hold:
 
 ```
 algnition-vamshi-bachu/
+├── backend/                  ← FastAPI backend and API routes
+├── frontend/                 ← React 18 + Recharts dashboard
+├── ml_engine/                ← Forecasting pipeline, configs, data, docs, tests, and artifacts
 ├── run.sh                    ← Judge entry point
-├── requirements.txt          ← Pinned dependencies
-├── pickle/
-│   └── model.pkl             ← Committed stub model (retrain via run.sh)
-├── data/raw/                 ← Place CSVs here
-├── output/                   ← predictions.csv written here
-├── reports/                  ← Markdown stat reports (generated at runtime)
-├── config/                   ← YAML configuration files
-├── src/
-│   ├── cli/predict.py        ← CLI called by run.sh
-│   ├── pipeline/             ← End-to-end orchestrator
-│   ├── ingestion/            ← Platform detection + CSV loading
-│   ├── canonical/            ← Unified 13-column schema
-│   ├── validation/           ← Data quality checks
-│   ├── preprocessing/        ← 8-step deterministic cleaner
-│   ├── features/             ← Calendar + KPI + Lag + Fourier
-│   ├── forecasting/          ← LightGBM + Prophet + Ensemble
-│   ├── uncertainty/          ← P10/P50/P90 interval enrichment
-│   ├── budget/               ← Elasticity-based budget simulator
-│   ├── evaluation/           ← Stats tests + metrics + SHAP
-│   ├── model_store/          ← Pickle serializer
-│   ├── llm/                  ← GPT-4o insights
-│   └── api/                  ← FastAPI backend
-├── frontend/               ← React 18 + Recharts dashboard
-├── tests/                  ← pytest (unit + integration)
-└── docs/                   ← Statistical validation methodology
+└── requirements.txt          ← Pinned dependencies
 ```
 
----
 
 ## 🔧 Development Setup
 
 ```bash
 # Backend
 pip install -r requirements.txt
-uvicorn src.api.main:app --reload
+uvicorn backend.app:app --reload
 
 # Frontend
 cd frontend && npm install && npm run dev
+
+# ML engine
+python -m ml_engine.cli.predict --data-dir ml_engine/data/raw --model-path ml_engine/pickle/model.pkl --output-path ml_engine/output/predictions.csv
 
 # Tests
 pytest tests/ -v
@@ -160,5 +141,5 @@ pytest tests/ -v
 7. **Ensemble** combines both (LightGBM 60% + Prophet 40%)
 8. **Statistical validation** runs ADF/KPSS, Ljung-Box, PICP, SHAP, and walk-forward CV
 9. **Acceptance criteria** gate ensures forecast is production-ready
-10. **AI insights** (GPT-4o) generate executive summary and risk analysis
+10. **AI insights** (Gemini) generate executive summary and risk analysis
 11. **Output CSV** written to `OUTPUT_PATH` with P10/P50/P90 per campaign per day

@@ -1,0 +1,44 @@
+# Forecasting model configuration
+
+horizon_days: 60
+confidence_levels: [0.10, 0.50, 0.90]
+
+models:
+  lightgbm:
+    enabled: true
+    num_leaves: 63
+    n_estimators: 500
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    min_child_samples: 20
+    quantiles: [0.10, 0.50, 0.90]
+
+  prophet:
+    enabled: true
+    seasonality_mode: multiplicative
+    yearly_seasonality: true
+    weekly_seasonality: true
+    daily_seasonality: false
+    changepoint_prior_scale: 0.05
+    seasonality_prior_scale: 10
+
+  autogluon:
+    enabled: false  # heavy dependency, enable if available
+    presets: medium_quality
+    time_limit: 120
+
+ensemble:
+  method: weighted_average
+  weights:
+    lgbm: 0.5
+    prophet: 0.5
+
+cross_validation:
+  n_splits: 3
+  test_size_days: 30
+  gap_days: 0
+
+backtest:
+  n_windows: 3
+  window_size_days: 30

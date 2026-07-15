@@ -1,0 +1,92 @@
+# =============================================================================
+# AIgnition Forecast Studio — Unified Configuration
+# =============================================================================
+
+# Forecast settings
+forecast:
+  horizons: [30, 60, 90]            # Supported forecast horizons in days
+  default_horizon: 60
+  quantiles: [0.10, 0.50, 0.90]
+  min_training_days: 14             # Minimum history required per campaign
+
+# Model settings
+models:
+  enabled:
+    - naive
+    - seasonal_naive
+    - prophet
+    - lgbm
+  ensemble:
+    lgbm_weight: 0.60
+    prophet_weight: 0.40
+  lgbm:
+    n_estimators: 300
+    num_leaves: 63
+    learning_rate: 0.05
+    subsample: 0.8
+    colsample_bytree: 0.8
+    min_child_samples: 5
+  prophet:
+    yearly_seasonality: true
+    weekly_seasonality: true
+    daily_seasonality: false
+    changepoint_prior_scale: 0.05
+
+# Statistical validation thresholds
+statistical:
+  significance_level: 0.05          # alpha for all hypothesis tests
+  bootstrap_resamples: 1000
+  ljung_box_lags: [10, 20]
+  backtest_folds: 3
+  backtest_test_days: 30
+
+# Acceptance criteria
+acceptance:
+  max_wmape_pct: 20.0
+  picp_target: 0.80
+  picp_tolerance: 0.10              # PICP must be in [0.70, 0.90]
+  ljung_box_p_threshold: 0.05
+
+# Data / schema
+data:
+  supported_platforms: [google, meta, microsoft]
+  canonical_columns:
+    - date
+    - channel
+    - campaign_id
+    - campaign_name
+    - campaign_type
+    - spend
+    - clicks
+    - impressions
+    - conversions
+    - revenue
+    - roas
+    - currency
+    - device
+    - country
+    - status
+  default_currency: USD
+
+# Holidays
+holidays:
+  country: US
+  years: [2023, 2024, 2025, 2026, 2027]
+
+# Logging
+logging:
+  level: INFO
+  log_dir: logs/
+  rotation: "10 MB"
+
+# API
+api:
+  host: 0.0.0.0
+  port: 8000
+  reload: false
+
+# LLM (read from env)
+llm:
+  model: gemini-2.5-flash
+  max_tokens: 1200
+  temperature: 0.3

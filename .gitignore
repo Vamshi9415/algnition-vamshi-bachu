@@ -21,18 +21,27 @@ env/
 # Data (raw data is not committed — place CSVs in data/raw/)
 data/raw/*.csv
 data/features/
+ml_engine/data/raw/*.csv
+ml_engine/data/features/
 
 # Model weights (the stub is committed; real trained model is gitignored)
 # Remove the next line if you want to commit the trained model
 # pickle/model.pkl
+pickle/model.pkl
+ml_engine/pickle/model.pkl
+*.pkl
 
 # Output
 output/
 !output/.gitkeep
+ml_engine/output/
+!ml_engine/output/.gitkeep
 
 # Reports (generated at runtime)
 reports/
 !reports/.gitkeep
+ml_engine/reports/
+!ml_engine/reports/.gitkeep
 
 # IDE
 .vscode/
@@ -42,7 +51,8 @@ reports/
 # OS
 .DS_Store
 Thumbs.db
-
+snapshot.py
+project_snapshot.md
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb

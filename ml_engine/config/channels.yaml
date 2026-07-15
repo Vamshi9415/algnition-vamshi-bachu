@@ -1,0 +1,54 @@
+# Channel definitions: maps raw CSV column names to canonical schema
+
+channels:
+  google:
+    name: Google Ads
+    # Supports both the Ads UI export (Date/Cost/Conv. value) and the Ads API
+    # export shape shipped in data/raw/ (segments_date/metrics_cost_micros/...).
+    date_column: segments_date
+    campaign_column: campaign_name
+    campaign_id_column: campaign_id
+    campaign_type_column: campaign_advertising_channel_type
+    spend_column: metrics_cost_micros  # in micros; divided by 1e6 in canonical/schema.py
+    clicks_column: metrics_clicks
+    impressions_column: metrics_impressions
+    conversions_column: metrics_conversions
+    revenue_column: metrics_conversions_value
+    currency: USD
+    # Each entry is an alternative set of columns; a file matches if ANY set is a subset of its columns.
+    detection_columns:
+      - [metrics_cost_micros, metrics_conversions_value, segments_date]
+      - [Cost, Conv. value, Campaign type]
+
+  meta:
+    name: Meta Ads
+    # This sample export only has a single "conversion" value column (dollar value,
+    # not a count) rather than separate Purchases / Purchases conversion value columns.
+    date_column: date_start
+    campaign_column: campaign_name
+    campaign_id_column: campaign_id
+    campaign_type_column: null
+    spend_column: spend
+    clicks_column: clicks
+    impressions_column: impressions
+    conversions_column: null
+    revenue_column: conversion
+    currency: USD
+    detection_columns:
+      - [date_start, spend, conversion]
+      - [Amount spent (USD), Purchases conversion value, Reporting starts]
+
+  microsoft:
+    name: Microsoft Ads
+    date_column: TimePeriod
+    campaign_column: CampaignName
+    campaign_id_column: CampaignId
+    campaign_type_column: CampaignType
+    spend_column: Spend
+    clicks_column: Clicks
+    impressions_column: Impressions
+    conversions_column: Conversions
+    revenue_column: Revenue
+    currency: USD
+    detection_columns:
+      - [TimePeriod, CampaignId, DailyBudget]

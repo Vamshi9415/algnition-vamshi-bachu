@@ -1,5 +1,4 @@
 """Pipeline orchestrator: wires every module together end-to-end."""
-import json
 from pathlib import Path
 
 import pandas as pd
@@ -17,21 +16,32 @@ from src.forecasting.ensemble import EnsembleForecaster
 from src.uncertainty.intervals import UncertaintyEngine
 from src.budget.simulator import BudgetSimulator
 from src.llm.insights import InsightGenerator
+from src.evaluation.descriptive_stats import DescriptiveStats
+from src.evaluation.stationarity import StationarityTester
+from src.evaluation.residual_diagnostics import ResidualDiagnostics
+from src.evaluation.forecast_metrics import ForecastMetrics
+from src.evaluation.significance_tests import SignificanceTester
+from src.evaluation.backtester import WalkForwardBacktester
+from src.evaluation.explainability import SHAPExplainer
+from src.evaluation.report_generator import ReportGenerator
 
 
 class ForecastPipeline:
-    """End-to-end pipeline: raw CSVs → probabilistic forecast JSON."""
+    """End-to-end pipeline: raw CSVs → probabilistic forecast → statistical validation → JSON."""
 
     def __init__(self, horizon_days: int = 60, config_dir: str = "config"):
         self.horizon_days = horizon_days
         with open(f"{config_dir}/forecasting.yaml") as f:
             self.fc_cfg = yaml.safe_load(f)
 
+        # Data layer
         self.loader = CSVLoader()
         self.canonical_builder = CanonicalSchemaBuilder()
         self.validator = DataValidator()
         self.cleaner = DataCleaner()
         self.feature_store = FeatureStore()
+
+        # Models
         self.lgbm = LGBMForecaster(self.fc_cfg.get("models", {}).get("lightgbm", {}))
         self.prophet = ProphetForecaster(self.fc_cfg.get("models", {}).get("prophet", {}))
         self.ensemble = EnsembleForecaster(self.fc_cfg.get("ensemble", {}).get("weights"))
@@ -39,68 +49,123 @@ class ForecastPipeline:
         self.budget_sim = BudgetSimulator()
         self.llm = InsightGenerator()
 
+        # Evaluation
+        self.desc_stats = DescriptiveStats()
+        self.stationarity = StationarityTester()
+        self.residuals = ResidualDiagnostics()
+        self.metrics = ForecastMetrics()
+        self.significance = SignificanceTester()
+        self.backtester = WalkForwardBacktester(n_splits=3, test_size_days=30)
+        self.shap_explainer = SHAPExplainer()
+        self.reporter = ReportGenerator()
+
     def run(self, filepaths: list[str]) -> dict:
         logger.info(f"Pipeline starting: {len(filepaths)} file(s)")
 
-        # 1. Load
+        # 1. Load + canonicalize + validate + clean
         loaded_files = self.loader.load_many(filepaths)
-
-        # 2. Canonicalize
         canonical_df = self.canonical_builder.build_from_many(loaded_files)
-
-        # 3. Validate
         validation_report = self.validator.validate(canonical_df)
         if not validation_report.passed:
-            logger.error(f"Validation failed: {validation_report.errors}")
             return {"status": "validation_failed", "errors": validation_report.errors}
-
-        # 4. Clean
         cleaned_df = self.cleaner.clean(canonical_df)
 
-        # 5. Feature engineering
+        # 2. Feature engineering
         features_df = self.feature_store.build(cleaned_df, save=False)
 
-        # 6. Train-test split (last 30 days as holdout)
+        # 3. Descriptive statistics
+        desc = self.desc_stats.compute_all(cleaned_df, ["revenue", "spend", "roas"])
+        self.reporter.descriptive_stats_report(desc)
+
+        # 4. Stationarity tests
+        stat_results = []
+        for campaign, grp in cleaned_df.groupby("campaign_name"):
+            s = grp.sort_values("date")["revenue"].reset_index(drop=True)
+            r = self.stationarity.test(s, name=campaign)
+            stl = self.stationarity.stl_decompose(s)
+            r["stl"] = stl
+            stat_results.append(r)
+        self.reporter.stationarity_report(stat_results)
+
+        # 5. Train/test split (last 30 days holdout)
         cutoff = features_df["date"].max() - pd.Timedelta(days=30)
         train_df = features_df[features_df["date"] <= cutoff]
         test_df  = features_df[features_df["date"] >  cutoff]
 
-        # 7. Fit models
+        # 6. Fit models
         self.lgbm.fit(train_df)
         self.prophet.fit(train_df)
         self.budget_sim.fit(train_df)
 
-        # 8. Generate forecast future dates
-        future_rows = self._build_future_frame(features_df)
+        # 7. In-sample test predictions
+        lgbm_test_preds = self.lgbm.predict(test_df)
+        merge_keys = ["date", "channel", "campaign_name"]
+        merged_test = test_df[[*merge_keys, "revenue"]].merge(lgbm_test_preds, on=merge_keys, how="inner")
 
-        # 9. Predict
+        # 8. Point + probabilistic metrics on holdout
+        y_true = merged_test["revenue"].values
+        y_p10  = merged_test["revenue_p10"].values
+        y_p50  = merged_test["revenue_p50"].values
+        y_p90  = merged_test["revenue_p90"].values
+        prob_metrics = self.metrics.probabilistic_metrics(y_true, y_p10, y_p50, y_p90)
+        self.reporter.metrics_report(prob_metrics, model_name="LightGBM Ensemble")
+
+        # 9. Residual diagnostics
+        residual_diag = self.residuals.diagnose(
+            pd.Series(y_true), pd.Series(y_p50)
+        )
+        self.reporter.residual_report(residual_diag)
+
+        # 10. Bootstrap CI for WMAPE
+        def wmape_fn(yt, yp):
+            return float(sum(abs(yt - yp)) / (sum(abs(yt)) + 1e-9) * 100)
+        wmape_ci = self.significance.bootstrap_ci(wmape_fn, y_true, y_p50)
+
+        # 11. SHAP explainability
+        shap_result = self.shap_explainer.explain(self.lgbm, test_df)
+
+        # 12. Walk-forward backtesting
+        backtest = self.backtester.run(features_df, LGBMForecaster,
+                                       model_kwargs=self.fc_cfg.get("models", {}).get("lightgbm", {}))
+
+        # 13. Acceptance criteria
+        acceptance = self._check_acceptance_criteria(prob_metrics, residual_diag)
+
+        # 14. Future forecast
+        future_rows = self._build_future_frame(features_df)
         lgbm_preds   = self.lgbm.predict(future_rows)
         prophet_preds = self.prophet.predict(self.horizon_days)
-
-        # 10. Ensemble
         forecast = self.ensemble.combine(lgbm_preds, prophet_preds)
-
-        # 11. Uncertainty
         forecast = self.uncertainty.enrich(forecast)
 
-        # 12. LLM insights
+        # 15. LLM insights
         exec_summary = self.llm.executive_summary(forecast)
         risk_text    = self.llm.risk_analysis(cleaned_df, forecast)
 
-        # 13. Feature importance (top 10)
-        fi = self.lgbm.feature_importance.head(10).to_dict(orient="records")
-
-        # 14. Compile response
-        result = self._compile_result(forecast, validation_report, exec_summary, risk_text, fi)
+        result = self._compile_result(
+            forecast, validation_report, exec_summary, risk_text,
+            self.lgbm.feature_importance.head(10).to_dict(orient="records"),
+            prob_metrics, residual_diag, wmape_ci, backtest, shap_result,
+            stat_results, desc, acceptance
+        )
         logger.info("Pipeline complete")
         return result
 
+    def _check_acceptance_criteria(self, metrics: dict, residuals: dict) -> dict:
+        """Evaluate production-readiness against predefined thresholds."""
+        criteria = {
+            "wmape_below_20pct": metrics.get("wmape", 999) < 20.0,
+            "picp_near_target": abs(metrics.get("coverage_gap", 1.0)) < 0.10,
+            "no_residual_autocorrelation": not residuals.get("ljung_box", {}).get(
+                "lag_10", {}).get("has_autocorrelation", True),
+            "calibration_ok": metrics.get("calibration_status") in ["Well-calibrated", "Over-covering"],
+        }
+        criteria["production_ready"] = all(criteria.values())
+        return criteria
+
     def _build_future_frame(self, features_df: pd.DataFrame) -> pd.DataFrame:
-        """Create a DataFrame of future rows reusing the last known feature state."""
         last_date = features_df["date"].max()
         future_dates = pd.date_range(last_date + pd.Timedelta(days=1), periods=self.horizon_days, freq="D")
-
-        # Repeat last row of each campaign as the future template
         templates = features_df.sort_values("date").groupby(["channel", "campaign_name"]).last().reset_index()
         frames = []
         for _, row in templates.iterrows():
@@ -108,18 +173,17 @@ class ForecastPipeline:
                 r = row.copy()
                 r["date"] = d
                 frames.append(r)
-
         future_df = pd.DataFrame(frames)
-        # Re-generate calendar features for actual future dates
         from src.features.calendar_features import CalendarFeatureGenerator
         cal = CalendarFeatureGenerator()
         future_df = cal.generate(future_df)
         return future_df
 
-    def _compile_result(self, forecast, validation_report, exec_summary, risk_text, feature_importance) -> dict:
-        forecast_records = []
-        for _, row in forecast.iterrows():
-            forecast_records.append({
+    def _compile_result(self, forecast, validation_report, exec_summary, risk_text,
+                        feature_importance, prob_metrics, residual_diag, wmape_ci,
+                        backtest, shap_result, stat_results, desc_stats, acceptance) -> dict:
+        forecast_records = [
+            {
                 "date": str(row["date"])[:10],
                 "channel": str(row.get("channel", "")),
                 "campaign_name": str(row.get("campaign_name", "")),
@@ -127,8 +191,9 @@ class ForecastPipeline:
                 "revenue_p50": round(float(row.get("revenue_p50", 0)), 2),
                 "revenue_p90": round(float(row.get("revenue_p90", 0)), 2),
                 "confidence": str(row.get("confidence_label", "")),
-            })
-
+            }
+            for _, row in forecast.iterrows()
+        ]
         return {
             "status": "success",
             "horizon_days": self.horizon_days,
@@ -141,7 +206,21 @@ class ForecastPipeline:
                 "channels": forecast["channel"].unique().tolist(),
             },
             "forecast": forecast_records,
+            "evaluation": {
+                "holdout_metrics": prob_metrics,
+                "wmape_bootstrap_ci": wmape_ci,
+                "residual_diagnostics": residual_diag,
+                "backtesting": backtest,
+                "acceptance_criteria": acceptance,
+            },
+            "stationarity": [{
+                "series": r.get("series"),
+                "verdict": r.get("verdict"),
+                "stl": r.get("stl", {}),
+            } for r in stat_results],
+            "descriptive_stats": desc_stats,
             "feature_importance": feature_importance,
+            "shap": shap_result,
             "ai_insights": {
                 "executive_summary": exec_summary,
                 "risk_analysis": risk_text,

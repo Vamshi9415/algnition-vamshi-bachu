@@ -1,80 +1,109 @@
-"""Canonical schema builder: maps any platform's DataFrame to unified format."""
+"""Canonical schema builder: maps any platform's raw columns to the unified 15-column schema."""
 import pandas as pd
-import yaml
 from loguru import logger
 
-from src.ingestion.detector import Channel
-
-
+# Full 15-column canonical schema
 CANONICAL_COLUMNS = [
     "date", "channel", "campaign_id", "campaign_name", "campaign_type",
-    "spend", "clicks", "impressions", "conversions", "revenue",
-    "roas", "currency", "daily_budget",
+    "spend", "clicks", "impressions", "conversions", "revenue", "roas",
+    "currency", "device", "country", "status",
 ]
+
+# Column mapping tables per platform
+GOOGLE_MAP = {
+    "Date": "date",
+    "Campaign": "campaign_name",
+    "Campaign ID": "campaign_id",
+    "Campaign type": "campaign_type",
+    "Campaign Type": "campaign_type",
+    "Cost": "spend",
+    "Clicks": "clicks",
+    "Impressions": "impressions",
+    "Conversions": "conversions",
+    "Conv. value": "revenue",
+    "Conv. value / cost": "roas",
+    "Currency code": "currency",
+    "Device": "device",
+    "Country": "country",
+    "Campaign status": "status",
+    "Status": "status",
+}
+
+META_MAP = {
+    "Reporting starts": "date",
+    "Campaign name": "campaign_name",
+    "Campaign ID": "campaign_id",
+    "Objective": "campaign_type",
+    "Amount spent (USD)": "spend",
+    "Link clicks": "clicks",
+    "Impressions": "impressions",
+    "Purchases": "conversions",
+    "Purchases conversion value": "revenue",
+    "Purchase ROAS (return on ad spend)": "roas",
+    "Currency": "currency",
+    "Device platforms": "device",
+    "Country": "country",
+    "Delivery": "status",
+}
+
+MICROSOFT_MAP = {
+    "TimePeriod": "date",
+    "CampaignName": "campaign_name",
+    "CampaignId": "campaign_id",
+    "CampaignType": "campaign_type",
+    "Spend": "spend",
+    "Clicks": "clicks",
+    "Impressions": "impressions",
+    "Conversions": "conversions",
+    "Revenue": "revenue",
+    "ReturnOnAdSpend": "roas",
+    "CurrencyCode": "currency",
+    "DeviceType": "device",
+    "Country": "country",
+    "CampaignStatus": "status",
+}
+
+PLATFORM_MAPS = {
+    "google": GOOGLE_MAP,
+    "meta": META_MAP,
+    "microsoft": MICROSOFT_MAP,
+}
 
 
 class CanonicalSchemaBuilder:
-    """Maps raw DataFrames to the canonical schema based on channel config."""
+    """Maps any platform DataFrame to the 15-column canonical schema."""
 
-    def __init__(self, config_path: str = "config/channels.yaml"):
-        with open(config_path) as f:
-            cfg = yaml.safe_load(f)
-        self.channels_cfg = cfg["channels"]
+    def build(self, df: pd.DataFrame, channel: str) -> pd.DataFrame:
+        col_map = PLATFORM_MAPS.get(channel, {})
+        renamed = df.rename(columns=col_map)
 
-    def build(self, df: pd.DataFrame, channel: Channel) -> pd.DataFrame:
-        """Return a DataFrame conforming to the canonical schema."""
-        cfg = self.channels_cfg.get(channel.value)
-        if cfg is None:
-            raise ValueError(f"No config for channel: {channel}")
+        # Ensure all canonical columns exist
+        for col in CANONICAL_COLUMNS:
+            if col not in renamed.columns:
+                renamed[col] = None
 
-        out = pd.DataFrame()
+        canonical = renamed[CANONICAL_COLUMNS].copy()
+        canonical["channel"] = channel
+        canonical["date"] = pd.to_datetime(canonical["date"], errors="coerce")
 
-        # Date
-        out["date"] = pd.to_datetime(df[cfg["date_column"]], errors="coerce")
+        # Numeric coercion
+        for num_col in ["spend", "clicks", "impressions", "conversions", "revenue", "roas"]:
+            canonical[num_col] = pd.to_numeric(canonical[num_col], errors="coerce")
 
-        # Channel tag
-        out["channel"] = channel.value
+        # String normalization
+        for str_col in ["campaign_name", "campaign_type", "currency", "device", "country", "status"]:
+            canonical[str_col] = canonical[str_col].astype(str).str.strip().str.lower()
 
-        # Campaign ID
-        cid = cfg.get("campaign_id_column")
-        out["campaign_id"] = df[cid].astype(str) if cid and cid in df.columns else None
-
-        # Campaign name
-        out["campaign_name"] = df[cfg["campaign_column"]].astype(str).str.strip()
-
-        # Campaign type
-        ct = cfg.get("campaign_type_column")
-        out["campaign_type"] = df[ct].astype(str).str.strip() if ct and ct in df.columns else "Unknown"
-
-        # Numeric fields
-        out["spend"] = pd.to_numeric(df[cfg["spend_column"]], errors="coerce").fillna(0.0)
-        out["clicks"] = pd.to_numeric(df[cfg["clicks_column"]], errors="coerce").fillna(0).astype(int) if cfg.get("clicks_column") and cfg["clicks_column"] in df.columns else 0
-        out["impressions"] = pd.to_numeric(df[cfg["impressions_column"]], errors="coerce").fillna(0).astype(int) if cfg.get("impressions_column") and cfg["impressions_column"] in df.columns else 0
-        out["conversions"] = pd.to_numeric(df[cfg["conversions_column"]], errors="coerce").fillna(0.0)
-        out["revenue"] = pd.to_numeric(df[cfg["revenue_column"]], errors="coerce").fillna(0.0)
-
-        # Derived
-        out["roas"] = (out["revenue"] / out["spend"]).replace([float("inf"), -float("inf")], 0.0).fillna(0.0)
-        out["currency"] = cfg.get("currency", "USD")
-
-        # Daily budget
-        out["daily_budget"] = pd.to_numeric(df["DailyBudget"], errors="coerce") if "DailyBudget" in df.columns else None
-
-        out = out.sort_values("date").reset_index(drop=True)
-        logger.info(f"Canonical schema built: {len(out)} rows, channel={channel.value}")
-        return out
+        logger.info(f"Canonical schema built for '{channel}': {len(canonical)} rows")
+        return canonical
 
     def build_from_many(self, loaded_files: list) -> pd.DataFrame:
-        """Merge multiple channel DataFrames into one canonical dataset."""
         frames = []
-        for lf in loaded_files:
-            try:
-                canonical = self.build(lf.df, lf.channel)
-                frames.append(canonical)
-            except Exception as e:
-                logger.error(f"Failed to canonicalize {lf.filepath}: {e}")
+        for item in loaded_files:
+            df = self.build(item["df"], item["channel"])
+            frames.append(df)
         if not frames:
-            raise RuntimeError("No files could be canonicalized.")
-        combined = pd.concat(frames, ignore_index=True).sort_values("date").reset_index(drop=True)
-        logger.info(f"Combined canonical dataset: {len(combined)} rows from {len(frames)} sources")
+            return pd.DataFrame(columns=CANONICAL_COLUMNS)
+        combined = pd.concat(frames, ignore_index=True)
+        logger.info(f"Combined canonical DataFrame: {len(combined)} rows, {len(frames)} platforms")
         return combined

@@ -17,10 +17,73 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install core dependencies (no heavy ML)
+      - name: Install dependencies
         run: |
-          pip install pandas numpy scikit-learn lightgbm pyyaml loguru holidays pytest pytest-asyncio fastapi httpx pydantic python-dotenv
+          pip install pandas numpy scikit-learn lightgbm pyyaml loguru holidays pytest pytest-asyncio fastapi httpx pydantic python-dotenv statsmodels scipy
 
-      - name: Run unit tests (skip integration if CSV absent)
+      - name: Run unit tests
         run: |
-          pytest tests/test_detector.py tests/test_validator.py tests/test_cleaner.py tests/test_feature_store.py -v --tb=short
+          pytest tests/test_detector.py tests/test_validator.py tests/test_cleaner.py tests/test_feature_store.py tests/test_evaluation.py -v --tb=short
+
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt --quiet || pip install pandas numpy scikit-learn lightgbm pyyaml loguru holidays statsmodels scipy prophet python-dotenv
+
+      - name: Generate stub model
+        run: python scripts/generate_stub_model.py
+
+      - name: Verify model.pkl exists
+        run: |
+          python -c "
+          import pickle
+          b = pickle.load(open('pickle/model.pkl', 'rb'))
+          assert 'lgbm' in b, 'lgbm missing from bundle'
+          assert 'prophet' in b, 'prophet missing from bundle'
+          assert 'budget_sim' in b, 'budget_sim missing from bundle'
+          print('Model bundle verified:', list(b.keys()))
+          "
+
+      - name: run.sh smoke test (synthetic data)
+        run: |
+          mkdir -p data/raw
+          python -c "
+          import pandas as pd, numpy as np
+          rng = np.random.default_rng(0)
+          dates = pd.date_range('2024-01-01', periods=90, freq='D')
+          df = pd.DataFrame({
+              'Date': dates.strftime('%Y-%m-%d'),
+              'Campaign': 'Search_US',
+              'Campaign type': 'Search',
+              'Cost': rng.uniform(50, 300, 90),
+              'Conversions': rng.uniform(1, 20, 90),
+              'Conv. value': rng.uniform(100, 900, 90),
+              'Clicks': rng.integers(20, 200, 90),
+              'Impressions': rng.integers(500, 5000, 90),
+          })
+          df.to_csv('data/raw/google_ads_smoke.csv', index=False)
+          print('Synthetic CSV written')
+          "
+          DATA_DIR=data/raw MODEL_PATH=pickle/model.pkl OUTPUT_PATH=output/predictions.csv bash run.sh
+
+      - name: Verify output CSV
+        run: |
+          python -c "
+          import pandas as pd
+          df = pd.read_csv('output/predictions.csv')
+          print('Output CSV shape:', df.shape)
+          required = ['date', 'channel', 'campaign_name', 'revenue_p10', 'revenue_p50', 'revenue_p90']
+          for col in required:
+              assert col in df.columns, f'Missing column: {col}'
+          assert len(df) > 0, 'Output CSV is empty'
+          print('All required columns present. Smoke test PASSED.')
+          "

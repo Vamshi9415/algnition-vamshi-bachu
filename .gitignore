@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment
+.env
+*.env
+
+# Data (raw data is not committed — place CSVs in data/raw/)
+data/raw/*.csv
+data/features/
+
+# Model weights (the stub is committed; real trained model is gitignored)
+# Remove the next line if you want to commit the trained model
+# pickle/model.pkl
+
+# Output
+output/
+!output/.gitkeep
+
+# Reports (generated at runtime)
+reports/
+!reports/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Logs
+*.log

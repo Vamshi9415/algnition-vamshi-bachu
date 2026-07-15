@@ -1,0 +1,53 @@
+# Channel definitions: maps raw CSV column names to canonical schema
+
+channels:
+  google:
+    name: Google Ads
+    date_column: Date
+    campaign_column: Campaign
+    campaign_id_column: null
+    campaign_type_column: Campaign type
+    spend_column: Cost
+    clicks_column: Clicks
+    impressions_column: Impressions
+    conversions_column: Conversions
+    revenue_column: Conv. value
+    currency: USD
+    detection_columns:
+      - Cost
+      - Conv. value
+      - Campaign type
+
+  meta:
+    name: Meta Ads
+    date_column: Reporting starts
+    campaign_column: Campaign name
+    campaign_id_column: Campaign ID
+    campaign_type_column: null
+    spend_column: Amount spent (USD)
+    clicks_column: Link clicks
+    impressions_column: Impressions
+    conversions_column: Purchases
+    revenue_column: Purchases conversion value
+    currency: USD
+    detection_columns:
+      - Amount spent (USD)
+      - Purchases conversion value
+      - Reporting starts
+
+  microsoft:
+    name: Microsoft Ads
+    date_column: TimePeriod
+    campaign_column: CampaignName
+    campaign_id_column: CampaignId
+    campaign_type_column: CampaignType
+    spend_column: Spend
+    clicks_column: Clicks
+    impressions_column: Impressions
+    conversions_column: Conversions
+    revenue_column: Revenue
+    currency: USD
+    detection_columns:
+      - TimePeriod
+      - CampaignId
+      - DailyBudget

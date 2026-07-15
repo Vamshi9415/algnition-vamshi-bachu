@@ -1,0 +1,45 @@
+# Holiday calendar configuration
+
+country: US
+year_range: [2023, 2027]
+
+marketing_events:
+  - name: Black Friday
+    month: 11
+    week: 4
+    weekday: 4  # Friday
+    impact: very_high
+  - name: Cyber Monday
+    month: 11
+    week: 4
+    weekday: 0  # Monday after Black Friday
+    impact: very_high
+  - name: Christmas
+    month: 12
+    day: 25
+    impact: high
+  - name: New Year
+    month: 1
+    day: 1
+    impact: high
+  - name: Valentine's Day
+    month: 2
+    day: 14
+    impact: medium
+  - name: Prime Day
+    month: 7
+    day: 15
+    impact: high
+  - name: Labor Day
+    month: 9
+    week: 1
+    weekday: 0
+    impact: medium
+  - name: Thanksgiving
+    month: 11
+    week: 4
+    weekday: 3  # Thursday
+    impact: high
+
+window_days_before: 7
+window_days_after: 3

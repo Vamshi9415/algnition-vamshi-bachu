@@ -1,0 +1,40 @@
+# Canonical schema definition and validation rules
+
+canonical_columns:
+  required:
+    - date
+    - channel
+    - campaign_name
+    - spend
+    - revenue
+  optional:
+    - campaign_id
+    - campaign_type
+    - clicks
+    - impressions
+    - conversions
+    - roas
+    - currency
+    - daily_budget
+
+validation_rules:
+  spend:
+    min: 0
+    dtype: float
+  revenue:
+    min: 0
+    dtype: float
+  clicks:
+    min: 0
+    dtype: int
+  impressions:
+    min: 0
+    dtype: int
+  conversions:
+    min: 0
+    dtype: float
+  roas:
+    min: 0
+    dtype: float
+
+schema_version: "1.0.0"

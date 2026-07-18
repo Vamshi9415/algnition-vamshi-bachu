@@ -17,6 +17,22 @@
 # =============================================================================
 set -euo pipefail
 
+python_version="$(python - <<'PY'
+import sys
+print(f"{sys.version_info.major}.{sys.version_info.minor}")
+PY
+)"
+
+check_python_version() {
+    case "$python_version" in
+        3.10|3.11|3.12|3.13) ;;
+        *)
+            echo "[run.sh] Unsupported Python version: $python_version (need 3.10+)"
+            exit 1
+            ;;
+    esac
+}
+
 # ---------- Defaults (positional args win, then env vars, then hard default) -
 DATA_DIR="${1:-${DATA_DIR:-ml_engine/data/raw}}"
 MODEL_PATH="${2:-${MODEL_PATH:-ml_engine/pickle/model.pkl}}"
@@ -38,11 +54,32 @@ echo "  HORIZON_DAYS = $HORIZON_DAYS"
 echo "  SKIP_TRAIN   = $SKIP_TRAIN"
 echo "====================================================="
 
+check_python_version
+
+if [ ! -d "$DATA_DIR" ]; then
+    echo "[run.sh] DATA_DIR not found: $DATA_DIR"
+    exit 1
+fi
+
+csv_count="$(find "$DATA_DIR" -maxdepth 1 -name '*.csv' | wc -l | tr -d ' ')"
+if [ "$csv_count" = "0" ]; then
+    echo "[run.sh] No CSV files found in $DATA_DIR"
+    exit 1
+fi
+echo "[run.sh] ✓ Found $csv_count dataset(s)"
+
 # ---------- Dependency check -------------------------------------------------
 if ! python -c "import lightgbm, pandas, numpy, sklearn, holidays, yaml" 2>/dev/null; then
     echo "[run.sh] Installing dependencies from requirements.txt ..."
     pip install -r requirements.txt --quiet
 fi
+
+if [ "$SKIP_TRAIN" = "1" ] && [ ! -f "$MODEL_PATH" ]; then
+    echo "[run.sh] Requested SKIP_TRAIN=1 but model bundle is missing at $MODEL_PATH"
+    exit 1
+fi
+
+echo "[run.sh] ✓ Runtime prerequisites satisfied"
 
 # ---------- Create output directory ------------------------------------------
 mkdir -p "$(dirname "$OUTPUT_PATH")"
@@ -55,5 +92,10 @@ python -m ml_engine.cli.predict \
     --output-path "$OUTPUT_PATH" \
     --horizon-days "$HORIZON_DAYS" \
     --skip-train  "$SKIP_TRAIN"
+
+if [ ! -f "$OUTPUT_PATH" ]; then
+    echo "[run.sh] Output verification failed: $OUTPUT_PATH not created"
+    exit 1
+fi
 
 echo "[run.sh] Done. Predictions written to: $OUTPUT_PATH"

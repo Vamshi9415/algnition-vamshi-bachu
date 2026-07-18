@@ -1,16 +1,31 @@
-"""Statistical report generator: produces Markdown reports per analysis type."""
+"""Statistical report generator: produces Markdown reports per analysis type.
+
+Purpose:
+    Persist human-readable analysis artifacts for judges and developers.
+Responsibilities:
+    Write descriptive, stationarity, residual, comparison, and feature-importance reports.
+Inputs:
+    Dictionaries and tables returned from the evaluation pipeline.
+Outputs:
+    Markdown files stored under the engine reports directory.
+Assumptions:
+    Report content is already validated by the evaluation layer.
+Limitations:
+    This module formats results; it does not compute metrics.
+"""
 from pathlib import Path
 from datetime import datetime
-import json
 
 from loguru import logger
+
+from ml_engine.paths import reports_path
 
 
 class ReportGenerator:
     """Generates individual Markdown report files from analysis results."""
 
-    def __init__(self, output_dir: str = "reports"):
-        self.output_dir = Path(output_dir)
+    def __init__(self, output_dir: str | Path | None = None):
+        self.output_dir = Path(output_dir) if output_dir else reports_path()
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def _write(self, filename: str, content: str):
@@ -83,15 +98,25 @@ class ReportGenerator:
         lines = [f"# Model Comparison Report\n_Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}_\n"]
         lines.append(f"**Best Model (lowest WMAPE):** {comparison.get('best_model')}\n")
         lines.append("## Ranking\n")
-        lines.append("| Model | MAE | RMSE | WMAPE | PICP | Train Time |")
-        lines.append("|-------|-----|------|-------|------|------------|")
+        lines.append("| Model | MAE | RMSE | WMAPE | R2 | MASE | PICP | Train Time |")
+        lines.append("|-------|-----|------|-------|----|------|------|------------|")
         for r in comparison.get("ranking", []):
             lines.append(
                 f"| {r.get('model')} | {r.get('mae')} | {r.get('rmse')} | "
-                f"{r.get('wmape')}% | {r.get('picp', 'N/A')} | {r.get('train_time_s')}s |"
+                f"{r.get('wmape')}% | {r.get('r2', 'N/A')} | {r.get('mase', 'N/A')} | {r.get('picp', 'N/A')} | {r.get('train_time_s')}s |"
             )
         lines.append("\n## Significance Tests\n")
         for t in comparison.get("significance_tests", []):
-            lines.append(f"- **{t.get('comparison')}**: {t.get('interpretation')} | Effect: {t.get('magnitude')}")
+            lines.append(f"- **{t.get('comparison')}**: {t.get('interpretation')} | Effect: {t.get('magnitude')} | Cliff's delta: {t.get('cliffs_delta', 'N/A')}")
         return self._write("model_comparison.md", "\n".join(lines))
+
+    def feature_importance_report(self, features: list[dict]) -> str:
+        lines = [f"# Feature Importance Report\n_Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}_\n"]
+        lines.append("| Rank | Feature | Importance |")
+        lines.append("|------|---------|------------|")
+        for idx, item in enumerate(features, start=1):
+            lines.append(f"| {idx} | {item.get('feature')} | {item.get('importance')} |")
+        lines.append("\n## Business Readout\n")
+        lines.append("These are the features most strongly influencing forecast output. They are the best starting point for feature prioritization and campaign optimization.")
+        return self._write("feature_importance.md", "\n".join(lines))
 

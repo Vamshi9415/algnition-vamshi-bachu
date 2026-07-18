@@ -6,7 +6,7 @@ import CampaignTable from './CampaignTable'
 
 export default function ForecastDashboard({ result }) {
   if (!result || result.status !== 'success') {
-    return <div className="mt-8 text-red-400">Forecast failed or invalid response.</div>
+    return <div className="mt-8 text-center text-ink-600 dark:text-ink-300 font-medium">Forecast failed or invalid response.</div>
   }
 
   return (

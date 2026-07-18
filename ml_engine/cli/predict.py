@@ -2,6 +2,7 @@
 import argparse
 import sys
 from pathlib import Path
+from datetime import datetime, timezone
 
 from loguru import logger
 
@@ -14,6 +15,11 @@ def parse_args():
     p.add_argument("--horizon-days", type=int, default=60, help="Forecast horizon in days")
     p.add_argument("--skip-train",  type=int, default=0, help="1 = skip training, load MODEL_PATH")
     return p.parse_args()
+
+
+def _build_pipeline(horizon: int, skip_train: bool):
+    from ml_engine.pipeline.orchestrator import ForecastPipeline
+    return ForecastPipeline(horizon_days=horizon, skip_train=skip_train)
 
 
 def main():
@@ -36,24 +42,23 @@ def main():
     # ------------------------------------------------------------------
     # 2. Load or train model bundle
     # ------------------------------------------------------------------
+    csv_paths = [str(f) for f in csv_files]
     if skip_train and model_path.exists():
         logger.info(f"Loading pre-trained model bundle from {model_path}")
         from ml_engine.model_store.serializer import ModelSerializer
-        from ml_engine.pipeline.orchestrator import ForecastPipeline
         bundle = ModelSerializer.load(str(model_path))
-        pipeline = ForecastPipeline(horizon_days=horizon, skip_train=True)
+        pipeline = _build_pipeline(horizon, True)
         pipeline.lgbm = bundle["lgbm"]
         pipeline.prophet = bundle["prophet"]
         pipeline.budget_sim = bundle["budget_sim"]
     else:
         logger.info("Training model from scratch ...")
-        from ml_engine.pipeline.orchestrator import ForecastPipeline
-        pipeline = ForecastPipeline(horizon_days=horizon)
+        pipeline = _build_pipeline(horizon, False)
 
     # ------------------------------------------------------------------
     # 3. Run the pipeline
     # ------------------------------------------------------------------
-    result = pipeline.run([str(f) for f in csv_files])
+    result = pipeline.run(csv_paths)
 
     if result.get("status") != "success":
         logger.error(f"Pipeline failed: {result}")
@@ -64,11 +69,23 @@ def main():
     # ------------------------------------------------------------------
     if not skip_train:
         from ml_engine.model_store.serializer import ModelSerializer
+        from ml_engine.model_store.registry import build_metadata
+        holdout_metrics = result.get("evaluation", {}).get("holdout_metrics", {})
+        metadata = build_metadata(
+            wmape=holdout_metrics.get("wmape"),
+            trained=datetime.now(timezone.utc).date().isoformat(),
+            features=len(getattr(pipeline.lgbm, "feature_cols", []) or []),
+            extra={
+                "source": "training pipeline",
+                "campaigns": result.get("summary", {}).get("campaigns_forecasted"),
+            },
+        )
         ModelSerializer.save(
             path=str(model_path),
             lgbm=pipeline.lgbm,
             prophet=pipeline.prophet,
             budget_sim=pipeline.budget_sim,
+            metadata=metadata,
         )
         logger.info(f"Model bundle saved to {model_path}")
 

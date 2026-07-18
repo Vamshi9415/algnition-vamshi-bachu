@@ -19,11 +19,11 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pandas numpy scikit-learn lightgbm pyyaml loguru holidays pytest pytest-asyncio fastapi httpx pydantic python-dotenv statsmodels scipy
+          pip install -r requirements.txt
 
       - name: Run unit tests
         run: |
-          pytest tests/test_detector.py tests/test_validator.py tests/test_cleaner.py tests/test_feature_store.py tests/test_evaluation.py -v --tb=short
+          pytest ml_engine/tests backend/tests -v --tb=short
 
   smoke-test:
     runs-on: ubuntu-latest
@@ -40,22 +40,35 @@ jobs:
           pip install -r requirements.txt --quiet || pip install pandas numpy scikit-learn lightgbm pyyaml loguru holidays statsmodels scipy prophet python-dotenv
 
       - name: Generate stub model
-        run: python scripts/generate_stub_model.py
+        run: python ml_engine/scripts/generate_stub_model.py
 
       - name: Verify model.pkl exists
         run: |
           python -c "
           import pickle
-          b = pickle.load(open('pickle/model.pkl', 'rb'))
+          b = pickle.load(open('ml_engine/pickle/model.pkl', 'rb'))
           assert 'lgbm' in b, 'lgbm missing from bundle'
           assert 'prophet' in b, 'prophet missing from bundle'
           assert 'budget_sim' in b, 'budget_sim missing from bundle'
           print('Model bundle verified:', list(b.keys()))
           "
 
+      - name: Verify metadata.json exists
+        run: |
+          python -c "
+          import json
+          from pathlib import Path
+          path = Path('ml_engine/pickle/metadata.json')
+          assert path.exists(), 'metadata.json missing'
+          metadata = json.loads(path.read_text())
+          assert metadata.get('algorithm'), 'algorithm missing from metadata'
+          assert metadata.get('trained'), 'trained missing from metadata'
+          print('Metadata verified:', metadata)
+          "
+
       - name: run.sh smoke test (synthetic data)
         run: |
-          mkdir -p data/raw
+          mkdir -p ml_engine/data/raw
           python -c "
           import pandas as pd, numpy as np
           rng = np.random.default_rng(0)
@@ -70,16 +83,16 @@ jobs:
               'Clicks': rng.integers(20, 200, 90),
               'Impressions': rng.integers(500, 5000, 90),
           })
-          df.to_csv('data/raw/google_ads_smoke.csv', index=False)
+          df.to_csv('ml_engine/data/raw/google_ads_smoke.csv', index=False)
           print('Synthetic CSV written')
           "
-          DATA_DIR=data/raw MODEL_PATH=pickle/model.pkl OUTPUT_PATH=output/predictions.csv bash run.sh
+          DATA_DIR=ml_engine/data/raw MODEL_PATH=ml_engine/pickle/model.pkl OUTPUT_PATH=ml_engine/output/predictions.csv bash run.sh
 
       - name: Verify output CSV
         run: |
           python -c "
           import pandas as pd
-          df = pd.read_csv('output/predictions.csv')
+          df = pd.read_csv('ml_engine/output/predictions.csv')
           print('Output CSV shape:', df.shape)
           required = ['date', 'channel', 'campaign_name', 'revenue_p10', 'revenue_p50', 'revenue_p90']
           for col in required:

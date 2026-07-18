@@ -43,16 +43,39 @@ class LagFeatureGenerator:
                     lambda x: x.shift(1).ewm(alpha=alpha, adjust=False).mean()
                 )
 
-        # Growth features: WoW, MoM, QoQ
+        # Growth features: WoW, MoM, QoQ.
+        # BUGFIX: previously compared df[col] (today's raw, unshifted value -- i.e. the
+        # target itself for col="revenue") against a lagged reference. Combined with the
+        # *_lagN features already in the set, that made revenue exactly reconstructible
+        # algebraically -- a target leak, not a real signal (see reports/recipe_verification.md
+        # errata). Anchor "current" on the last KNOWN value (lag1, yesterday) instead, and
+        # push the reference point back by one extra day so the window length (7/30/90d) is
+        # unchanged.
         for col in ["revenue", "spend"]:
             if col not in df.columns:
                 continue
-            prev7  = df.groupby(group_keys)[col].shift(7)
-            prev30 = df.groupby(group_keys)[col].shift(30)
-            prev90 = df.groupby(group_keys)[col].shift(90)
-            df[f"{col}_wow_growth"] = ((df[col] - prev7)  / (prev7.abs()  + 1e-9)).round(4)
-            df[f"{col}_mom_growth"] = ((df[col] - prev30) / (prev30.abs() + 1e-9)).round(4)
-            df[f"{col}_qoq_growth"] = ((df[col] - prev90) / (prev90.abs() + 1e-9)).round(4)
+            asof = df.groupby(group_keys)[col].shift(1)
+            prev7  = df.groupby(group_keys)[col].shift(8)
+            prev30 = df.groupby(group_keys)[col].shift(31)
+            prev90 = df.groupby(group_keys)[col].shift(91)
+            df[f"{col}_wow_growth"] = ((asof - prev7)  / (prev7.abs()  + 1e-9)).round(4)
+            df[f"{col}_mom_growth"] = ((asof - prev30) / (prev30.abs() + 1e-9)).round(4)
+            df[f"{col}_qoq_growth"] = ((asof - prev90) / (prev90.abs() + 1e-9)).round(4)
+
+        # Lifecycle & momentum features (leak-free: derived from date and already-shifted lags).
+        # Both ranked in the top 15 of the leak-free feature set in the ablation
+        # (see reports/feature_engineering.md); days_since_series_start captures the
+        # campaign ramp/decay curve, rev_lag1_over_lag7 captures week-over-week momentum.
+        df["days_since_series_start"] = (
+            df.groupby(group_keys)["date"].transform(lambda s: (s - s.min()).dt.days)
+        )
+        if "revenue_lag1" in df.columns and "revenue_lag7" in df.columns:
+            df["rev_lag1_over_lag7"] = (
+                (df["revenue_lag1"] / (df["revenue_lag7"] + 1e-9))
+                .replace([float("inf"), float("-inf")], 0.0)
+                .clip(-100, 100)
+                .round(4)
+            )
 
         # Interaction features
         if "spend" in df.columns and "month" in df.columns:

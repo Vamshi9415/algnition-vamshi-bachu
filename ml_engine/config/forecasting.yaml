@@ -13,6 +13,11 @@ models:
     colsample_bytree: 0.8
     min_child_samples: 20
     quantiles: [0.10, 0.50, 0.90]
+    log_target: false        # train on log1p(revenue); re-verified NEGATIVE on true leak-free data (see reports/recipe_verification.md errata)
+    target_encoding: false   # campaign x dow mean revenue; disabled - overfits holdout (see reports/recipe_verification.md)
+    conformal: true          # split-conformal interval calibration; lifts P10-P90 coverage to ~nominal 80%
+    calibration_fraction: 0.2 # fraction of training history held out to calibrate the interval width
+    conformal_per_channel: false # one factor per channel; verified neutral here (coverage split is temporal drift, not between-channel)
 
   prophet:
     enabled: true
@@ -31,8 +36,8 @@ models:
 ensemble:
   method: weighted_average
   weights:
-    lgbm: 0.5
-    prophet: 0.5
+    lgbm: 0.45
+    prophet: 0.35
 
 cross_validation:
   n_splits: 3

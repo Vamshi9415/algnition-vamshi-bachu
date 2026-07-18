@@ -1,0 +1,429 @@
+{
+  "cutoff": "2025-12-10",
+  "set_sizes": {
+    "Calendar only": 15,
+    "Lags only": 30,
+    "Rolling+EWM only": 66,
+    "Leak-free (calendar+lags+rolling+EWM)": 111,
+    "Leak-free + new engineered feats": 125,
+    "Same-day KPIs only (nowcast)": 20,
+    "Full production set (leaky)": 140,
+    "Production + new engineered feats": 154
+  },
+  "results": [
+    {
+      "mae": 491.20480258259613,
+      "rmse": 1206.2722478155897,
+      "smape": 140.3004308584062,
+      "r2": 0.02945335961028106,
+      "set": "Calendar only",
+      "n_features": 15,
+      "model": "LightGBM",
+      "fit_s": 1.6
+    },
+    {
+      "mae": 478.19530517686024,
+      "rmse": 1186.444497094001,
+      "smape": 140.14183188577408,
+      "r2": 0.0610972941265534,
+      "set": "Calendar only",
+      "n_features": 15,
+      "model": "XGBoost",
+      "fit_s": 0.5
+    },
+    {
+      "mae": 505.6565432286874,
+      "rmse": 1209.6525377142675,
+      "smape": 141.00436951821789,
+      "r2": 0.02400628787265524,
+      "set": "Calendar only",
+      "n_features": 15,
+      "model": "RandomForest",
+      "fit_s": 0.6
+    },
+    {
+      "mae": 364.31806163915286,
+      "rmse": 864.34630560002,
+      "smape": 136.2921157183061,
+      "r2": 0.5016880545768194,
+      "set": "Lags only",
+      "n_features": 30,
+      "model": "LightGBM",
+      "fit_s": 0.6
+    },
+    {
+      "mae": 360.3454582641961,
+      "rmse": 850.3568121378064,
+      "smape": 135.5372373791576,
+      "r2": 0.5176879323548149,
+      "set": "Lags only",
+      "n_features": 30,
+      "model": "XGBoost",
+      "fit_s": 1.0
+    },
+    {
+      "mae": 327.3166030573573,
+      "rmse": 730.2941963854373,
+      "smape": 133.81283353708403,
+      "r2": 0.6442692265374586,
+      "set": "Lags only",
+      "n_features": 30,
+      "model": "RandomForest",
+      "fit_s": 10.5
+    },
+    {
+      "mae": 386.49920196106115,
+      "rmse": 1107.658406947486,
+      "smape": 136.2284795773042,
+      "r2": 0.18165311409376017,
+      "set": "Rolling+EWM only",
+      "n_features": 66,
+      "model": "LightGBM",
+      "fit_s": 0.9
+    },
+    {
+      "mae": 379.39929817573585,
+      "rmse": 1071.7694886149118,
+      "smape": 135.01015811712847,
+      "r2": 0.2338240481746342,
+      "set": "Rolling+EWM only",
+      "n_features": 66,
+      "model": "XGBoost",
+      "fit_s": 2.2
+    },
+    {
+      "mae": 342.2215798132681,
+      "rmse": 965.9415119645846,
+      "smape": 133.76770407515633,
+      "r2": 0.3776604534673018,
+      "set": "Rolling+EWM only",
+      "n_features": 66,
+      "model": "RandomForest",
+      "fit_s": 29.7
+    },
+    {
+      "mae": 367.6916724891516,
+      "rmse": 932.6127275461545,
+      "smape": 135.55506741001943,
+      "r2": 0.4198658729481024,
+      "set": "Leak-free (calendar+lags+rolling+EWM)",
+      "n_features": 111,
+      "model": "LightGBM",
+      "fit_s": 1.4
+    },
+    {
+      "mae": 393.36232170084065,
+      "rmse": 938.2335554083447,
+      "smape": 135.61820455861908,
+      "r2": 0.412851899320654,
+      "set": "Leak-free (calendar+lags+rolling+EWM)",
+      "n_features": 111,
+      "model": "XGBoost",
+      "fit_s": 3.5
+    },
+    {
+      "mae": 341.3120073347409,
+      "rmse": 909.8502223729442,
+      "smape": 133.79682043999307,
+      "r2": 0.44783922807809684,
+      "set": "Leak-free (calendar+lags+rolling+EWM)",
+      "n_features": 111,
+      "model": "RandomForest",
+      "fit_s": 47.0
+    },
+    {
+      "mae": 433.16158553416074,
+      "rmse": 1093.082406102307,
+      "smape": 137.73223070854752,
+      "r2": 0.20304913533408941,
+      "set": "Leak-free + new engineered feats",
+      "n_features": 125,
+      "model": "LightGBM",
+      "fit_s": 1.7
+    },
+    {
+      "mae": 410.1273848075079,
+      "rmse": 999.8695666678631,
+      "smape": 137.22676617171282,
+      "r2": 0.3331741340389317,
+      "set": "Leak-free + new engineered feats",
+      "n_features": 125,
+      "model": "XGBoost",
+      "fit_s": 4.0
+    },
+    {
+      "mae": 355.9782686263041,
+      "rmse": 1040.2590032398077,
+      "smape": 134.3264483086759,
+      "r2": 0.2782135839849098,
+      "set": "Leak-free + new engineered feats",
+      "n_features": 125,
+      "model": "RandomForest",
+      "fit_s": 55.3
+    },
+    {
+      "mae": 29.13950381066281,
+      "rmse": 166.93720080177008,
+      "smape": 44.367497565698805,
+      "r2": 0.9814120287559384,
+      "set": "Same-day KPIs only (nowcast)",
+      "n_features": 20,
+      "model": "LightGBM",
+      "fit_s": 0.7
+    },
+    {
+      "mae": 29.72992390664312,
+      "rmse": 207.07602937442707,
+      "smape": 67.85044796964189,
+      "r2": 0.9713987248638962,
+      "set": "Same-day KPIs only (nowcast)",
+      "n_features": 20,
+      "model": "XGBoost",
+      "fit_s": 0.8
+    },
+    {
+      "mae": 17.301188312974308,
+      "rmse": 168.65391277622192,
+      "smape": 14.002567276476244,
+      "r2": 0.9810277612809406,
+      "set": "Same-day KPIs only (nowcast)",
+      "n_features": 20,
+      "model": "RandomForest",
+      "fit_s": 7.4
+    },
+    {
+      "mae": 45.590764089150824,
+      "rmse": 279.796604946217,
+      "smape": 44.71432294668305,
+      "r2": 0.9477831560632363,
+      "set": "Full production set (leaky)",
+      "n_features": 140,
+      "model": "LightGBM",
+      "fit_s": 2.0
+    },
+    {
+      "mae": 35.46816332003092,
+      "rmse": 292.07504231516174,
+      "smape": 41.80911577078904,
+      "r2": 0.943099689731901,
+      "set": "Full production set (leaky)",
+      "n_features": 140,
+      "model": "XGBoost",
+      "fit_s": 3.8
+    },
+    {
+      "mae": 23.893354702660865,
+      "rmse": 189.6815857795994,
+      "smape": 12.396809276221543,
+      "r2": 0.9760019429446393,
+      "set": "Full production set (leaky)",
+      "n_features": 140,
+      "model": "RandomForest",
+      "fit_s": 42.4
+    },
+    {
+      "mae": 50.439893325018815,
+      "rmse": 261.5305168475877,
+      "smape": 44.67590191997803,
+      "r2": 0.95437840318036,
+      "set": "Production + new engineered feats",
+      "n_features": 154,
+      "model": "LightGBM",
+      "fit_s": 2.2
+    },
+    {
+      "mae": 36.989275433172786,
+      "rmse": 314.0910376147013,
+      "smape": 37.898816631244614,
+      "r2": 0.9341983435376304,
+      "set": "Production + new engineered feats",
+      "n_features": 154,
+      "model": "XGBoost",
+      "fit_s": 4.1
+    },
+    {
+      "mae": 23.363984341080798,
+      "rmse": 189.08627540422,
+      "smape": 12.9113329364229,
+      "r2": 0.9761523410313064,
+      "set": "Production + new engineered feats",
+      "n_features": 154,
+      "model": "RandomForest",
+      "fit_s": 51.2
+    },
+    {
+      "mae": 267.05811285956787,
+      "rmse": 787.952063851716,
+      "smape": 138.1972401130988,
+      "r2": 0.5858808320540018,
+      "set": "Leak-free + new feats, log1p target",
+      "n_features": 125,
+      "model": "LightGBM",
+      "fit_s": 1.9
+    },
+    {
+      "mae": 270.20572400679345,
+      "rmse": 793.8576085744963,
+      "smape": 143.74231188914362,
+      "r2": 0.5796500877723422,
+      "set": "Leak-free + new feats, log1p target",
+      "n_features": 125,
+      "model": "XGBoost",
+      "fit_s": 5.4
+    }
+  ],
+  "top20_leakfree_new": [
+    [
+      "te_campaign_dow_mean_rev",
+      1030
+    ],
+    [
+      "day_of_year",
+      546
+    ],
+    [
+      "revenue_lag1",
+      503
+    ],
+    [
+      "clicks_lag1",
+      492
+    ],
+    [
+      "revenue_roll_std_3d",
+      458
+    ],
+    [
+      "conversions_lag1",
+      436
+    ],
+    [
+      "revenue_roll_std_7d",
+      404
+    ],
+    [
+      "days_since_series_start",
+      400
+    ],
+    [
+      "day_of_month",
+      379
+    ],
+    [
+      "roas_lag30",
+      369
+    ],
+    [
+      "spend_roll_std_3d",
+      358
+    ],
+    [
+      "conversions_lag3",
+      351
+    ],
+    [
+      "revenue_roll_max_7d",
+      345
+    ],
+    [
+      "clicks_lag3",
+      344
+    ],
+    [
+      "rev_lag1_over_lag7",
+      329
+    ],
+    [
+      "revenue_roll_median_3d",
+      328
+    ],
+    [
+      "revenue_lag3",
+      317
+    ],
+    [
+      "roas_lag7",
+      315
+    ],
+    [
+      "roas_lag14",
+      314
+    ],
+    [
+      "roas_lag3",
+      307
+    ]
+  ],
+  "new_feature_ranks": [
+    [
+      "te_campaign_dow_mean_rev",
+      1030,
+      1
+    ],
+    [
+      "days_since_series_start",
+      400,
+      8
+    ],
+    [
+      "rev_lag1_over_lag7",
+      329,
+      15
+    ],
+    [
+      "rev_roll7_over_roll30",
+      291,
+      23
+    ],
+    [
+      "rev_roll_cv_7d",
+      281,
+      24
+    ],
+    [
+      "rev_lag7_over_lag30",
+      238,
+      41
+    ],
+    [
+      "dow_sin",
+      224,
+      46
+    ],
+    [
+      "spend_roll7_over_roll30",
+      209,
+      54
+    ],
+    [
+      "te_campaign_mean_rev",
+      170,
+      72
+    ],
+    [
+      "dow_cos",
+      116,
+      92
+    ],
+    [
+      "te_campaign_std_rev",
+      115,
+      93
+    ],
+    [
+      "month_sin",
+      102,
+      100
+    ],
+    [
+      "month_cos",
+      52,
+      113
+    ],
+    [
+      "te_channel_mean_rev",
+      25,
+      114
+    ]
+  ]
+}

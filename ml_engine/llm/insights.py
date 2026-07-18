@@ -61,8 +61,16 @@ class InsightGenerator:
         return self._call(system, data_str)
 
     def risk_analysis(self, df: pd.DataFrame, forecast: pd.DataFrame) -> str:
-        low_roas = df[df["roas"] < 1.5][["campaign_name", "channel", "roas"]].head(5).to_string(index=False)
-        high_unc = forecast[forecast["relative_uncertainty"] > 0.5][["campaign_name", "revenue_p50"]].head(5).to_string(index=False) if "relative_uncertainty" in forecast.columns else "N/A"
+        if df.empty or not {"campaign_name", "channel", "roas"}.issubset(df.columns):
+            low_roas = "N/A"
+        else:
+            low_roas = df[df["roas"] < 1.5][["campaign_name", "channel", "roas"]].head(5).to_string(index=False)
+
+        if forecast.empty or "relative_uncertainty" not in forecast.columns or not {"campaign_name", "revenue_p50"}.issubset(forecast.columns):
+            high_unc = "N/A"
+        else:
+            high_unc = forecast[forecast["relative_uncertainty"] > 0.5][["campaign_name", "revenue_p50"]].head(5).to_string(index=False)
+
         system = (
             "You are a risk analyst for a digital marketing agency. "
             "Identify the top 3 risks from the data. For each: state the risk, why it matters, and what to do."

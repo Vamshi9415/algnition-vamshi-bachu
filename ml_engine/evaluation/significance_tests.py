@@ -1,4 +1,18 @@
-"""Statistical significance tests: Wilcoxon, Friedman, Nemenyi, Bootstrap CI."""
+"""Statistical significance tests: Wilcoxon, Friedman, Nemenyi, Bootstrap CI.
+
+Purpose:
+    Compare forecast models and quantify whether differences are meaningful.
+Responsibilities:
+    Compute non-parametric tests, effect sizes, and bootstrap confidence intervals.
+Inputs:
+    Paired error arrays or metric functions with true/predicted samples.
+Outputs:
+    Test statistics, p-values, effect sizes, and confidence intervals.
+Assumptions:
+    Inputs are aligned and represent the same horizon or fold.
+Limitations:
+    These routines assess statistical differences, not business significance.
+"""
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -104,5 +118,33 @@ class SignificanceTester:
             "cohens_d": round(d, 4),
             "magnitude": magnitude,
             "interpretation": f"Effect size is {magnitude} (d={d:.3f})",
+        }
+
+    def cliffs_delta(self, errors_a: np.ndarray, errors_b: np.ndarray) -> dict:
+        """Cliff's Delta effect size for paired comparisons."""
+
+        a, b = np.abs(np.array(errors_a)), np.abs(np.array(errors_b))
+        n = min(len(a), len(b))
+        a, b = a[:n], b[:n]
+        if n == 0:
+            return {"error": "Need at least one paired sample"}
+
+        greater = 0
+        lower = 0
+        for x in a:
+            greater += int(np.sum(x > b))
+            lower += int(np.sum(x < b))
+
+        delta = float((greater - lower) / (n * n))
+        magnitude = (
+            "negligible" if abs(delta) < 0.147 else
+            "small" if abs(delta) < 0.33 else
+            "medium" if abs(delta) < 0.474 else
+            "large"
+        )
+        return {
+            "cliffs_delta": round(delta, 4),
+            "magnitude": magnitude,
+            "interpretation": f"Cliff's delta is {magnitude} (δ={delta:.3f})",
         }
 

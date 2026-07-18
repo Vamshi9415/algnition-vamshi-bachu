@@ -24,12 +24,8 @@ data/features/
 ml_engine/data/raw/*.csv
 ml_engine/data/features/
 
-# Model weights (the stub is committed; real trained model is gitignored)
-# Remove the next line if you want to commit the trained model
-# pickle/model.pkl
-pickle/model.pkl
-ml_engine/pickle/model.pkl
-*.pkl
+# Model weights (the committed bundle should stay tracked)
+# Keep these files in the repository so a clean clone is runnable.
 
 # Output
 output/
@@ -59,3 +55,13 @@ project_snapshot.md
 
 # Logs
 *.log
+
+# Frontend
+node_modules/
+frontend/dist/
+
+# CatBoost training artifacts
+catboost_info/
+
+# Pytest
+.pytest_cache/

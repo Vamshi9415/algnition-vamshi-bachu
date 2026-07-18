@@ -1,0 +1,102 @@
+{
+  "prediction_length": 14,
+  "n_series": 98,
+  "n_test_rows": 1372,
+  "fit_s": 355.3,
+  "known_covariates": [
+    "year",
+    "quarter",
+    "month",
+    "week_of_year",
+    "day_of_week",
+    "day_of_month",
+    "day_of_year",
+    "is_weekend",
+    "is_month_start",
+    "is_month_end",
+    "is_quarter_start",
+    "is_quarter_end",
+    "is_holiday"
+  ],
+  "external_eval": {
+    "mae": 120.04648594377409,
+    "rmse": 366.36749029071876,
+    "smape": 147.59731750824903,
+    "r2": 0.3318651123586369,
+    "coverage": 0.8680758017492711
+  },
+  "leaderboard": [
+    {
+      "model": "WeightedEnsemble",
+      "score_test": -0.5818154732584677,
+      "score_val": -0.5818157214134054,
+      "pred_time_test": 8.446090698242188,
+      "pred_time_val": 11.843775749206543,
+      "fit_time_marginal": 0.7029999999940628,
+      "fit_order": 8
+    },
+    {
+      "model": "DirectTabular",
+      "score_test": -0.5896474871027819,
+      "score_val": -0.5896474871027819,
+      "pred_time_test": 0.45534372329711914,
+      "pred_time_val": 0.22202420234680176,
+      "fit_time_marginal": 3.3691353797912598,
+      "fit_order": 3
+    },
+    {
+      "model": "TemporalFusionTransformer",
+      "score_test": -0.6353815939042298,
+      "score_val": -0.6353837401458703,
+      "pred_time_test": 0.5753743648529053,
+      "pred_time_val": 0.11929011344909668,
+      "fit_time_marginal": 222.57223391532898,
+      "fit_order": 7
+    },
+    {
+      "model": "Chronos2",
+      "score_test": -0.6567039441229345,
+      "score_val": -0.6567039441229345,
+      "pred_time_test": 5.208119630813599,
+      "pred_time_val": 11.502461433410645,
+      "fit_time_marginal": 96.1140284538269,
+      "fit_order": 6
+    },
+    {
+      "model": "ETS",
+      "score_test": -1.2479566141970722,
+      "score_val": -1.2479566141970722,
+      "pred_time_test": 18.500601291656494,
+      "pred_time_val": 5.9777538776397705,
+      "fit_time_marginal": 0.02929067611694336,
+      "fit_order": 4
+    },
+    {
+      "model": "Theta",
+      "score_test": -1.2644541782518743,
+      "score_val": -1.2644541782518743,
+      "pred_time_test": 1.8512609004974365,
+      "pred_time_val": 0.6113035678863525,
+      "fit_time_marginal": 0.03570222854614258,
+      "fit_order": 5
+    },
+    {
+      "model": "RecursiveTabular",
+      "score_test": -1.30554741786399,
+      "score_val": -1.30554741786399,
+      "pred_time_test": 0.6777133941650391,
+      "pred_time_val": 0.23588871955871582,
+      "fit_time_marginal": 1.6735515594482422,
+      "fit_order": 2
+    },
+    {
+      "model": "SeasonalNaive",
+      "score_test": -1.634825273676379,
+      "score_val": -1.634825273676379,
+      "pred_time_test": 0.23530197143554688,
+      "pred_time_val": 6.842357873916626,
+      "fit_time_marginal": 0.0473935604095459,
+      "fit_order": 1
+    }
+  ]
+}

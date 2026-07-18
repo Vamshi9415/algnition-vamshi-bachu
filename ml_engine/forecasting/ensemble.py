@@ -1,4 +1,4 @@
-"""Ensemble: weighted average of LightGBM + Prophet forecasts."""
+"""Ensemble: weighted average of LightGBM and Prophet forecasts."""
 
 import pandas as pd
 from loguru import logger
@@ -19,28 +19,50 @@ class EnsembleForecaster:
         lgbm_preds: pd.DataFrame,
         prophet_preds: pd.DataFrame | None = None,
     ) -> pd.DataFrame:
-        if prophet_preds is None or prophet_preds.empty:
-            logger.info("Ensemble: using LightGBM only (Prophet unavailable)")
+        def _suffix_frame(frame: pd.DataFrame, source: str) -> pd.DataFrame:
+            renamed = frame.copy()
+            for q in ["p10", "p50", "p90"]:
+                col = f"revenue_{q}"
+                if col in renamed.columns:
+                    renamed = renamed.rename(columns={col: f"{col}_{source}"})
+            return renamed
+
+        sources: list[tuple[str, pd.DataFrame]] = [("lgbm", lgbm_preds)]
+        if prophet_preds is not None and not prophet_preds.empty:
+            sources.append(("prophet", prophet_preds))
+
+        if len(sources) == 1:
+            logger.info("Ensemble: using LightGBM only (other forecasters unavailable)")
             return lgbm_preds
 
         merge_keys = ["date", "channel", "campaign_name"]
-        merged = lgbm_preds.merge(prophet_preds, on=merge_keys, suffixes=("_lgbm", "_prophet"), how="left")
+        merged = _suffix_frame(lgbm_preds, "lgbm")
+        for source, frame in sources[1:]:
+            merged = merged.merge(_suffix_frame(frame, source), on=merge_keys, how="left")
 
-        w_l = self.weights["lgbm"]
-        w_p = self.weights["prophet"]
+        available_weights = {
+            source: float(self.weights.get(source, 0.0))
+            for source, frame in sources
+            if any(f"revenue_p{q}_{source}" in merged.columns for q in [10, 50, 90])
+        }
+        if not available_weights:
+            available_weights = {source: 1.0 for source, _ in sources}
+
+        total_weight = sum(available_weights.values()) or 1.0
+        normalized_weights = {source: weight / total_weight for source, weight in available_weights.items()}
 
         for q in ["p10", "p50", "p90"]:
-            l_col = f"revenue_{q}_lgbm"
-            p_col = f"revenue_{q}_prophet"
-            if p_col in merged.columns:
-                merged[f"revenue_{q}"] = (
-                    w_l * merged[l_col].fillna(0) + w_p * merged[p_col].fillna(0)
-                ).clip(lower=0)
-            else:
-                merged[f"revenue_{q}"] = merged[l_col].fillna(0)
+            combined = None
+            for source, weight in normalized_weights.items():
+                col = f"revenue_{q}_{source}"
+                if col not in merged.columns:
+                    continue
+                series = merged[col].fillna(0)
+                combined = series * weight if combined is None else combined + series * weight
+            merged[f"revenue_{q}"] = (combined if combined is not None else merged[f"revenue_{q}_lgbm"].fillna(0)).clip(lower=0)
 
         out_cols = merge_keys + ["revenue_p10", "revenue_p50", "revenue_p90"]
-        logger.info(f"Ensemble complete: {len(merged)} rows")
+        logger.info(f"Ensemble complete: {len(merged)} rows using {list(normalized_weights.keys())}")
         return merged[out_cols]
 
 

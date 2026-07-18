@@ -1,0 +1,32 @@
+[
+  {
+    "model": "Stacking (LGBM+XGB+Cat -> Ridge)",
+    "family": "ensemble",
+    "mae": 177.05793239519187,
+    "rmse": 1242.1614616747424,
+    "smape": 95.59393261456994,
+    "r2": -0.029157492241103533,
+    "fit_s": 31.22,
+    "pred_s": 0.0
+  },
+  {
+    "model": "Stacking (LGBM+XGB+Cat+RF -> Ridge)",
+    "family": "ensemble",
+    "mae": 170.42919218246539,
+    "rmse": 1117.8618423099167,
+    "smape": 93.0610473156361,
+    "r2": 0.16650691344861157,
+    "fit_s": 138.52,
+    "pred_s": 0.0
+  },
+  {
+    "model": "Stacking (LGBM+XGB+Cat+RF -> LGBM meta)",
+    "family": "ensemble",
+    "mae": 54.39190323919971,
+    "rmse": 587.7744425827142,
+    "smape": 95.35010237335216,
+    "r2": 0.7695656944089801,
+    "fit_s": 142.21,
+    "pred_s": 0.0
+  }
+]

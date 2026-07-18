@@ -66,3 +66,32 @@ class ProphetForecaster:
         ].clip(lower=0)
         return out
 
+    def predict_on_frame(self, frame: pd.DataFrame) -> pd.DataFrame:
+        """Predict on a provided future frame aligned by campaign and channel."""
+
+        if not PROPHET_AVAILABLE or not self.models or frame.empty:
+            return pd.DataFrame(columns=["date", "channel", "campaign_name", "revenue_p10", "revenue_p50", "revenue_p90"])
+
+        frames = []
+        for key, model in self.models.items():
+            channel, campaign = key.split("|", 1)
+            group = frame[(frame["channel"] == channel) & (frame["campaign_name"] == campaign)].sort_values("date")
+            if group.empty:
+                continue
+
+            horizon_days = len(group)
+            future = model.make_future_dataframe(periods=horizon_days, include_history=False)
+            forecast = model.predict(future).tail(horizon_days).copy()
+            forecast["date"] = group["date"].values
+            forecast["channel"] = channel
+            forecast["campaign_name"] = campaign
+            forecast = forecast.rename(columns={"yhat": "revenue_p50", "yhat_lower": "revenue_p10", "yhat_upper": "revenue_p90"})
+            frames.append(forecast[["date", "channel", "campaign_name", "revenue_p10", "revenue_p50", "revenue_p90"]])
+
+        if not frames:
+            return pd.DataFrame(columns=["date", "channel", "campaign_name", "revenue_p10", "revenue_p50", "revenue_p90"])
+
+        out = pd.concat(frames, ignore_index=True)
+        out[["revenue_p10", "revenue_p50", "revenue_p90"]] = out[["revenue_p10", "revenue_p50", "revenue_p90"]].clip(lower=0)
+        return out
+

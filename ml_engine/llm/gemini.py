@@ -6,6 +6,9 @@ import os
 from typing import Any
 
 from loguru import logger
+from dotenv import find_dotenv, load_dotenv
+
+load_dotenv(find_dotenv(), override=False)
 
 try:
     from google import genai
@@ -74,8 +77,11 @@ class RoundRobinKeyManager:
             add(value)
             index += 1
 
-        for value in os.getenv("GEMINI_API_KEYS", "").split(","):
-            add(value)
+        raw_keys = os.getenv("GEMINI_API_KEYS", "")
+        for part in raw_keys.replace("\n", ",").split(","):
+            key = part.strip()
+            if key:
+                add(key)
 
         add(os.getenv("GEMINI_API_KEY", ""))
         return keys

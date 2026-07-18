@@ -1,0 +1,33 @@
+[
+  {
+    "mae": 210.34535808451707,
+    "rmse": 642.0439245010854,
+    "smape": 129.27644985621552,
+    "r2": 0.7250490532852463,
+    "label": "Leak-free (honest forecasting)",
+    "n_features": 122,
+    "fit_s": 256.8,
+    "leaderboard_top": "WeightedEnsemble_L2"
+  },
+  {
+    "mae": 25.460779686402578,
+    "rmse": 154.63676280142718,
+    "smape": 36.23954649399608,
+    "r2": 0.984050347074474,
+    "label": "Full production set (nowcast)",
+    "n_features": 142,
+    "fit_s": 241.5,
+    "leaderboard_top": "WeightedEnsemble_L2"
+  },
+  {
+    "mae": 209.18788390922094,
+    "rmse": 627.7713999474248,
+    "smape": 126.44354388539337,
+    "r2": 0.7371374053692434,
+    "label": "Quantile AutoGluon (leak-free)",
+    "n_features": 122,
+    "fit_s": 249.7,
+    "coverage": 0.703368452292625,
+    "leaderboard_top": "WeightedEnsemble_L2"
+  }
+]

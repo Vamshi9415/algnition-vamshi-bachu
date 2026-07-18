@@ -1,0 +1,358 @@
+{
+  "meta": {
+    "n_rows": 25562,
+    "n_train": 18823,
+    "n_test": 6739,
+    "n_features": 140,
+    "n_series": 136,
+    "date_min": "2024-01-01",
+    "date_max": "2026-06-05",
+    "cutoff": "2025-12-10",
+    "target_mean_test": 391.7859792172645,
+    "target_std_test": 1224.438935203006
+  },
+  "results": [
+    {
+      "model": "Naive (lag-1)",
+      "family": "baseline",
+      "mae": 315.1540332675851,
+      "rmse": 859.6808280307107,
+      "smape": 113.60917150394569,
+      "r2": 0.5070530078087403,
+      "fit_s": 0.0,
+      "pred_s": 0.0
+    },
+    {
+      "model": "Seasonal Naive (lag-7)",
+      "family": "baseline",
+      "mae": 435.5068858156697,
+      "rmse": 1312.1906453257561,
+      "smape": 123.93164218092872,
+      "r2": -0.14846988748608636,
+      "fit_s": 0.0,
+      "pred_s": 0.0
+    },
+    {
+      "model": "Moving Average (7d)",
+      "family": "baseline",
+      "mae": 319.8607905145421,
+      "rmse": 837.0904629576698,
+      "smape": 109.72981418876033,
+      "r2": 0.5326195676605603,
+      "fit_s": 0.0,
+      "pred_s": 0.0
+    },
+    {
+      "model": "Linear Regression",
+      "family": "linear",
+      "mae": 131.32796206286207,
+      "rmse": 396.0374147868532,
+      "smape": 72.64775475191888,
+      "r2": 0.8953839852940797,
+      "fit_s": 0.1,
+      "pred_s": 0.006
+    },
+    {
+      "model": "Ridge",
+      "family": "linear",
+      "mae": 131.7381044716677,
+      "rmse": 394.9156729640598,
+      "smape": 74.50051439207698,
+      "r2": 0.8959757776839867,
+      "fit_s": 0.06,
+      "pred_s": 0.005
+    },
+    {
+      "model": "Lasso",
+      "family": "linear",
+      "mae": 130.4155396068986,
+      "rmse": 395.09832418980574,
+      "smape": 72.6981079638191,
+      "r2": 0.8958795315896176,
+      "fit_s": 132.52,
+      "pred_s": 0.006
+    },
+    {
+      "model": "ElasticNet",
+      "family": "linear",
+      "mae": 128.2090816153836,
+      "rmse": 377.8263554772931,
+      "smape": 65.63009440407023,
+      "r2": 0.9047839335222276,
+      "fit_s": 43.4,
+      "pred_s": 0.006
+    },
+    {
+      "model": "Huber (robust)",
+      "family": "linear",
+      "mae": 110.06469323855765,
+      "rmse": 384.8348409242936,
+      "smape": 65.64725289106404,
+      "r2": 0.9012187526792672,
+      "fit_s": 8.94,
+      "pred_s": 0.005
+    },
+    {
+      "model": "KNN (k=10)",
+      "family": "instance",
+      "mae": 228.02201437173449,
+      "rmse": 685.4936107844095,
+      "smape": 121.2442458199731,
+      "r2": 0.6865757751303172,
+      "fit_s": 0.04,
+      "pred_s": 1.973
+    },
+    {
+      "model": "Decision Tree",
+      "family": "tree",
+      "mae": 53.53019337588669,
+      "rmse": 290.9809271174876,
+      "smape": 102.18134051017059,
+      "r2": 0.943525189212862,
+      "fit_s": 1.4,
+      "pred_s": 0.002
+    },
+    {
+      "model": "Linear SVR",
+      "family": "svm",
+      "mae": 117.54673525818289,
+      "rmse": 410.6616291663793,
+      "smape": 74.3375898749557,
+      "r2": 0.8875151614135942,
+      "fit_s": 0.76,
+      "pred_s": 0.005
+    },
+    {
+      "model": "MLP Neural Net (2x64)",
+      "family": "neural",
+      "mae": 207.15820852117753,
+      "rmse": 480.82045584701547,
+      "smape": 121.752906342195,
+      "r2": 0.8457974307903388,
+      "fit_s": 4.75,
+      "pred_s": 0.009
+    },
+    {
+      "model": "Random Forest (400)",
+      "family": "bagging",
+      "mae": 23.93607570401984,
+      "rmse": 190.938497934105,
+      "smape": 15.294060933452549,
+      "r2": 0.9756828462068214,
+      "fit_s": 110.77,
+      "pred_s": 0.079
+    },
+    {
+      "model": "Extra Trees (400)",
+      "family": "bagging",
+      "mae": 33.85655911654276,
+      "rmse": 202.47748249259334,
+      "smape": 77.64415108607574,
+      "r2": 0.9726549197200008,
+      "fit_s": 13.66,
+      "pred_s": 0.142
+    },
+    {
+      "model": "Bagging (100 trees)",
+      "family": "bagging",
+      "mae": 26.469120032015436,
+      "rmse": 182.85920434124282,
+      "smape": 96.49821201128913,
+      "r2": 0.9776972000229317,
+      "fit_s": 26.0,
+      "pred_s": 0.413
+    },
+    {
+      "model": "AdaBoost (200)",
+      "family": "boosting",
+      "mae": 82.11129894536026,
+      "rmse": 275.76759760106904,
+      "smape": 108.07131929822103,
+      "r2": 0.9492761500259839,
+      "fit_s": 179.7,
+      "pred_s": 0.417
+    },
+    {
+      "model": "Gradient Boosting (sklearn)",
+      "family": "boosting",
+      "mae": 28.82253496239814,
+      "rmse": 151.38724760598458,
+      "smape": 41.10972083305255,
+      "r2": 0.9847136315191518,
+      "fit_s": 194.24,
+      "pred_s": 0.037
+    },
+    {
+      "model": "HistGradientBoosting",
+      "family": "boosting",
+      "mae": 55.3195625620632,
+      "rmse": 300.90565399856166,
+      "smape": 50.12208448191308,
+      "r2": 0.9396070235328462,
+      "fit_s": 0.95,
+      "pred_s": 0.023
+    },
+    {
+      "model": "LightGBM (production cfg)",
+      "family": "boosting",
+      "mae": 45.590764089150824,
+      "rmse": 279.796604946217,
+      "smape": 44.71432294668305,
+      "r2": 0.9477831560632363,
+      "fit_s": 3.07,
+      "pred_s": 0.045
+    },
+    {
+      "model": "XGBoost",
+      "family": "boosting",
+      "mae": 35.46816332003092,
+      "rmse": 292.07504231516174,
+      "smape": 41.80911577078904,
+      "r2": 0.943099689731901,
+      "fit_s": 5.86,
+      "pred_s": 0.035
+    },
+    {
+      "model": "CatBoost",
+      "family": "boosting",
+      "mae": 51.60266715732306,
+      "rmse": 165.45913114617187,
+      "smape": 84.4222067419533,
+      "r2": 0.9817397290731067,
+      "fit_s": 8.92,
+      "pred_s": 0.035
+    },
+    {
+      "model": "Voting (LGBM+XGB+Cat)",
+      "family": "ensemble",
+      "mae": 35.49144428422562,
+      "rmse": 173.1189820124925,
+      "smape": 75.68963134121125,
+      "r2": 0.9800098930670634,
+      "fit_s": 13.96,
+      "pred_s": 0.054
+    },
+    {
+      "model": "Voting (LGBM+XGB+Cat+RF)",
+      "family": "ensemble",
+      "mae": 30.628619079316746,
+      "rmse": 156.76444042104973,
+      "smape": 74.06296640015071,
+      "r2": 0.983608418737772,
+      "fit_s": 77.15,
+      "pred_s": 0.172
+    },
+    {
+      "model": "Stacking (LGBM+XGB+Cat -> Ridge)",
+      "family": "ensemble",
+      "error": "cross_val_predict only works for partitions"
+    },
+    {
+      "model": "Stacking (LGBM+XGB+Cat+RF -> LGBM)",
+      "family": "ensemble",
+      "error": "cross_val_predict only works for partitions"
+    },
+    {
+      "model": "Mean blend (LGBM+XGB+Cat)",
+      "family": "ensemble",
+      "mae": 35.52639668539971,
+      "rmse": 173.0700196528637,
+      "smape": 86.4690774060833,
+      "r2": 0.9800211988682418,
+      "fit_s": 0.0,
+      "pred_s": 0.0
+    },
+    {
+      "model": "Weighted blend 0.5/0.3/0.2 (LGBM/XGB/Cat)",
+      "family": "ensemble",
+      "mae": 35.329372518249,
+      "rmse": 191.39085209510796,
+      "smape": 85.37625576366979,
+      "r2": 0.9755674897346435,
+      "fit_s": 0.0,
+      "pred_s": 0.0
+    },
+    {
+      "model": "Mean blend (all boosters + RF + ET)",
+      "family": "ensemble",
+      "mae": 30.274494493334767,
+      "rmse": 147.24067179368615,
+      "smape": 90.18456718333321,
+      "r2": 0.9855395663027541,
+      "fit_s": 0.0,
+      "pred_s": 0.0
+    },
+    {
+      "model": "Prophet (per-campaign, 4658/6739 rows matched)",
+      "family": "statistical",
+      "mae": 107357.88320293016,
+      "rmse": 509972.8682213571,
+      "smape": 145.26149444094904,
+      "r2": -125806.02811093221,
+      "fit_s": 21.03,
+      "pred_s": 5.61
+    }
+  ],
+  "top_features": [
+    [
+      "aov",
+      2083
+    ],
+    [
+      "conversions",
+      1806
+    ],
+    [
+      "rpc",
+      1754
+    ],
+    [
+      "clicks",
+      1702
+    ],
+    [
+      "roas",
+      949
+    ],
+    [
+      "revenue_wow_growth",
+      501
+    ],
+    [
+      "spend",
+      412
+    ],
+    [
+      "ctr_lag30",
+      373
+    ],
+    [
+      "revenue_mom_growth",
+      373
+    ],
+    [
+      "clicks_lag1",
+      368
+    ],
+    [
+      "conversions_lag1",
+      341
+    ],
+    [
+      "revenue_roll_max_14d",
+      322
+    ],
+    [
+      "clicks_lag3",
+      281
+    ],
+    [
+      "cvr",
+      274
+    ],
+    [
+      "spend_x_month",
+      255
+    ]
+  ]
+}

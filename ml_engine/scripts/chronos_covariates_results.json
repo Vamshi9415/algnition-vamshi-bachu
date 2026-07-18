@@ -1,0 +1,70 @@
+{
+  "fit_s": 33.1,
+  "known_covariates": [
+    "year",
+    "quarter",
+    "month",
+    "week_of_year",
+    "day_of_week",
+    "day_of_month",
+    "day_of_year",
+    "is_weekend",
+    "is_month_start",
+    "is_month_end",
+    "is_quarter_start",
+    "is_quarter_end",
+    "is_holiday"
+  ],
+  "leaderboard": [
+    {
+      "model": "WeightedEnsemble",
+      "score_test": -0.5870108764279239,
+      "score_val": -0.5870108764279239
+    },
+    {
+      "model": "DirectTabular",
+      "score_test": -0.5896474871027819,
+      "score_val": -0.5896474871027819
+    },
+    {
+      "model": "Chronos2ZeroShot",
+      "score_test": -0.6893403421698893,
+      "score_val": -0.6893403421698893
+    },
+    {
+      "model": "Chronos2PlusFeatures",
+      "score_test": -0.8517572050692879,
+      "score_val": -0.8517572050692879
+    }
+  ],
+  "external": {
+    "WeightedEnsemble": {
+      "mae": 118.65968526669153,
+      "rmse": 360.4475005980648,
+      "smape": 155.7637813996413,
+      "r2": 0.3532829251184816,
+      "cover": 0.7995626822157434
+    },
+    "DirectTabular": {
+      "mae": 120.3241860480483,
+      "rmse": 368.7616936098062,
+      "smape": 161.45533685366962,
+      "r2": 0.32310408607202445,
+      "cover": 0.9300291545189504
+    },
+    "Chronos2ZeroShot": {
+      "mae": 135.42185580846314,
+      "rmse": 373.8345998583455,
+      "smape": 156.0722563656882,
+      "r2": 0.3043524181152575,
+      "cover": 0.7040816326530612
+    },
+    "Chronos2PlusFeatures": {
+      "mae": 143.00441389409184,
+      "rmse": 378.05085040181115,
+      "smape": 157.21933278493847,
+      "r2": 0.28857236786824914,
+      "cover": 0.8717201166180758
+    }
+  }
+}

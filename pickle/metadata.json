@@ -1,0 +1,9 @@
+{
+  "algorithm": "LightGBM + Prophet",
+  "campaigns": 109,
+  "features": 141,
+  "source": "training pipeline",
+  "trained": "2026-07-18",
+  "version": "1.0.0",
+  "wmape": 45.1876
+}

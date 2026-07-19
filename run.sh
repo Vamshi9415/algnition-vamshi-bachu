@@ -4,12 +4,12 @@
 # =============================================================================
 # Usage:
 #   ./run.sh <DATA_DIR> <MODEL_PATH> <OUTPUT_PATH>
-#   ./run.sh ./ml_engine/data/raw ./ml_engine/pickle/model.pkl ./ml_engine/output/predictions.csv
+#   ./run.sh ./data ./pickle/model.pkl ./output/predictions.csv
 #
 # Positional args (all optional, fall back to env vars, then defaults):
-#   $1 / DATA_DIR     Directory containing raw ad-platform CSVs  (default: ml_engine/data/raw)
-#   $2 / MODEL_PATH   Path to serialised model bundle             (default: ml_engine/pickle/model.pkl)
-#   $3 / OUTPUT_PATH  Path where the output CSV will be written   (default: ml_engine/output/predictions.csv)
+#   $1 / DATA_DIR     Directory containing raw ad-platform CSVs  (default: data)
+#   $2 / MODEL_PATH   Path to serialised model bundle             (default: pickle/model.pkl)
+#   $3 / OUTPUT_PATH  Path where the output CSV will be written   (default: output/predictions.csv)
 #
 # Additional environment variables:
 #   HORIZON_DAYS Number of future days to forecast           (default: 60)
@@ -34,9 +34,9 @@ check_python_version() {
 }
 
 # ---------- Defaults (positional args win, then env vars, then hard default) -
-DATA_DIR="${1:-${DATA_DIR:-ml_engine/data/raw}}"
-MODEL_PATH="${2:-${MODEL_PATH:-ml_engine/pickle/model.pkl}}"
-OUTPUT_PATH="${3:-${OUTPUT_PATH:-ml_engine/output/predictions.csv}}"
+DATA_DIR="${1:-${DATA_DIR:-data}}"
+MODEL_PATH="${2:-${MODEL_PATH:-pickle/model.pkl}}"
+OUTPUT_PATH="${3:-${OUTPUT_PATH:-output/predictions.csv}}"
 HORIZON_DAYS="${HORIZON_DAYS:-60}"
 if [ -f "$MODEL_PATH" ]; then
     SKIP_TRAIN="${SKIP_TRAIN:-1}"
